@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyTwin // Access Control</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        :root {
+            --login-bg: #0A0F1E;
+        }
+
+        body {
+            background-color: var(--login-bg);
+            background-image: none;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* Animated Biosignal Background */
+        .bg-wave {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .wave-path {
+            fill: none;
+            stroke: var(--cobalt);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: waveFlow 8s linear infinite;
+        }
+
+        @keyframes waveFlow {
+            0% { stroke-dashoffset: 1000; transform: translateX(0); }
+            100% { stroke-dashoffset: 0; transform: translateX(-100px); }
+        }
+
+        .login-header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .login-wordmark {
+            font-family: var(--ff);
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .login-wordmark em {
+            font-style: normal;
+            color: var(--cobalt);
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--r-xl);
+            padding: 48px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 10;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-family: var(--ff-mono);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink4);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #FFFFFF;
+            border-radius: var(--r-sm);
+            font-family: var(--ff);
+            font-size: 14px;
+            outline: none;
+            transition: var(--trans);
+        }
+
+        .login-input:focus {
+            border-color: var(--cobalt);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 8px;
+            background: var(--cobalt);
+            color: white;
+            font-family: var(--ff);
+            font-size: 14px;
+            font-weight: 700;
+            border: none;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            transition: var(--trans);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .login-btn:hover {
+            background: #1D4ED8;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        /* LOADING SEQUENCE */
+        #init-sequence {
+            display: none;
+        }
+        
+        .init-list {
+            list-style: none;
+            font-family: var(--ff-mono);
+            font-size: 13px;
+            color: #A0AEC0;
+            margin-bottom: 32px;
+            min-height: 120px;
+        }
+
+        .init-list li {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.4s var(--ease);
+        }
+
+        .init-list li.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .init-list li::before {
+            content: ">";
+            color: var(--cobalt);
+            font-weight: 700;
+        }
+
+        /* Typing Cursor Effect */
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 15px;
+            background: var(--cobalt);
+            margin-left: 4px;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--cobalt);
+            transition: width 0.1s linear;
+        }
+
+        .ieee-tag {
+            margin-top: 32px;
+            font-family: var(--ff-mono);
+            font-size: 10px;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            opacity: 0.6;
+        }
+
+        #white-fade {
+            position: fixed;
+            inset: 0;
+            background: #FFFFFF;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+            transition: opacity 0.8s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="white-fade"></div>
+
+    <!-- Background Wave -->
+    <svg class="bg-wave" width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+        <path class="wave-path" d="M0,500 Q50,450 100,500 T200,500 T300,500 T400,500 T500,500 T600,500 T700,500 T800,500 T900,500 T1000,500" />
+        <path class="wave-path" style="animation-delay: -2s; opacity: 0.5;" d="M0,550 Q50,500 100,550 T200,550 T300,550 T400,550 T500,550 T600,550 T700,550 T800,550 T900,550 T1000,550" />
+    </svg>
+
+    <div class="login-header">
+        <div class="login-wordmark">
+            <div class="pulse"></div>
+            Study<em>Twin</em>
+        </div>
+    </div>
+
+    <div class="login-card">
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label class="form-label">Neural Identity</label>
+                <input class="login-input" type="email" value="researcher@rvce.edu.in" required spellcheck="false">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Access Token</label>
+                <input class="login-input" type="password" value="••••••••" required>
+            </div>
+            <button type="submit" class="login-btn">Initialize Session</button>
+        </form>
+
+        <div id="init-sequence">
+            <ul class="init-list" id="init-list">
+                <li id="step-1">Loading 1D-CNN Kernel...</li>
+                <li id="step-2">Establishing BLE Handshake...</li>
+                <li id="step-3">Calibrating GSR Baseline...</li>
+                <li id="step-4">Syncing Three.js Neural Twin...</li>
+            </ul>
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ieee-tag">IEEE Validated · Edge AI · Industry 4.0</div>
+
+    <script src="app.js"></script>
+    <script>
+        function handleLogin(e) {
+            e.preventDefault();
+            
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('init-sequence').style.display = 'block';
+
+            const steps = [
+                document.getElementById('step-1'),
+                document.getElementById('step-2'),
+                document.getElementById('step-3'),
+                document.getElementById('step-4')
+            ];
+
+            const progressBar = document.getElementById('progress-bar');
+            
+            let progress = 0;
+            const duration = 2500;
+            const intervalTime = 20; 
+            const increment = (100 / (duration / intervalTime));
+
+            // Show steps with typing-like delay
+            setTimeout(() => { steps[0].classList.add('visible'); steps[0].innerHTML += '<span class="cursor"></span>'; }, 200);
+            setTimeout(() => { 
+                steps[0].querySelector('.cursor')?.remove();
+                steps[1].classList.add('visible'); steps[1].innerHTML += '<span class="cursor"></span>'; 
+            }, 800);
+            setTimeout(() => { 
+                steps[1].querySelector('.cursor')?.remove();
+                steps[2].classList.add('visible'); steps[2].innerHTML += '<span class="cursor"></span>'; 
+            }, 1400);
+            setTimeout(() => { 
+                steps[2].querySelector('.cursor')?.remove();
+                steps[3].classList.add('visible'); steps[3].innerHTML += '<span class="cursor"></span>'; 
+            }, 2000);
+
+            const progressInterval = setInterval(() => {
+                progress += increment;
+                if (progress >= 100) progress = 100;
+                progressBar.style.width = progress + '%';
+                
+                if (progress === 100) {
+                    clearInterval(progressInterval);
+                    setTimeout(() => {
+                        document.getElementById('white-fade').style.opacity = '1';
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 800);
+                    }, 400);
+                }
+            }, intervalTime);
+        }
+    </script>
+</body>
+</html>

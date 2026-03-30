@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StudyTwin — Live Dashboard</title>
+  <meta name="description"
+    content="Real-time cognitive load monitoring dashboard powered by IEEE-validated biosignal fusion." />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .dash {
+      padding: calc(var(--nav-h)+24px) 28px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* ── SESSION BAR ── */
+    .session-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 16px 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .sb-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .sb-sep {
+      width: 1px;
+      height: 36px;
+      background: var(--border);
+    }
+
+    .sb-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink4);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .sb-val {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .session-timer {
+      font-family: var(--ff);
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--cobalt);
+      letter-spacing: -2px;
+    }
+
+    /* ── TRIBE CONTEXT BAR ── */
+    .tribe-context-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-radius: var(--r-lg);
+      cursor: default;
+    }
+    .tribe-context-bar:hover {
+      transform: none;
+      box-shadow: var(--shadow);
+    }
+
+    .tcb-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .tcb-material {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tcb-pills {
+      display: flex;
+      gap: 8px;
+    }
+
+    .cds-pill {
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .cds-pill.amber { background: rgba(217, 119, 6, 0.08); color: var(--amber); border: 1px solid rgba(217, 119, 6, 0.2); }
+    .cds-pill.cobalt { background: var(--cobalt-l); color: var(--cobalt); border: 1px solid rgba(37, 99, 235, 0.2); }
+    .cds-pill.emerald { background: var(--emerald-l); color: var(--emerald); border: 1px solid rgba(5, 150, 105, 0.2); }
+
+    .tcb-rec {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink3);
+    }
+
+    /* ── METRIC CARDS ── */
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    .mc {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 22px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+    }
+
+    .mc:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(37, 99, 235, .08);
+    }
+
+    .mc::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--cobalt);
+      border-radius: 0 0 var(--r-xl) var(--r-xl);
+      transition: background .6s;
+    }
+
+    .mc-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink4);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .mc-val {
+      font-family: var(--ff);
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--cobalt);
+      line-height: 1;
+      transition: color 0.5s ease-in-out;
+      letter-spacing: -1px;
+    }
+
+    .mc-unit {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink4);
+      margin-left: 2px;
+    }
+
+    .mc-sub {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink4);
+      margin-top: 8px;
+    }
+
+    /* ── MAIN 3-COL ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .85fr .85fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    /* ── PANEL ── */
+    .panel {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: -.3px;
+    }
+
+    .panel-tag {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink4);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .panel-body {
+      padding: 20px 24px;
+    }
+
+    /* ── CHART ── */
+    .chart-canvas-wrap {
+      padding: 20px 24px 16px;
+    }
+
+    /* ── BRAIN PANEL ── */
+    .brain-panel {
+      position: relative;
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .brain-panel-head {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 22px;
+      background: rgba(255, 255, 255, .88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    #dash-canvas {
+      width: 100%;
+      height: 300px;
+      display: block;
+    }
+
+    .brain-bottom {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .bo-card {
+      background: rgba(255, 255, 255, .88);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 12px 18px;
+    }
+
+    .bo-label {
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--ink4);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .bo-val {
+      font-family: var(--ff);
+      font-size: 42px;
+      font-weight: 900;
+      line-height: 1;
+      transition: color 0.5s ease-in-out;
+      letter-spacing: -2px;
+    }
+
+    /* ── POMODORO ── */
+    .pomo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      gap: 16px;
+    }
+
+    .pomo-ring {
+      position: relative;
+      width: 160px;
+      height: 160px;
+    }
+
+    .pomo-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .pomo-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pomo-time {
+      font-family: var(--ff);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--ink);
+      letter-spacing: -1.5px;
+    }
+
+    .pomo-phase-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink4);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-top: 3px;
+    }
+
+    .pomo-status {
+      font-size: 13px;
+      color: var(--ink3);
+      text-align: center;
+      max-width: 200px;
+      line-height: 1.65;
+    }
+
+    .pomo-log {
+      width: 100%;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      margin-top: 6px;
+    }
+
+    .log-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink4);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: 10px;
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: flex-start;
+    }
+
+    .log-time {
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--cobalt);
+      flex-shrink: 0;
+    }
+
+    /* ── SENSORS ── */
+    .sensor-row {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sensor-row:last-child {
+      border-bottom: none;
+    }
+
+    .sensor-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 7px;
+    }
+
+    .sensor-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink3);
+    }
+
+    .sensor-val {
+      font-family: var(--ff-mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cobalt);
+      transition: color .4s;
+    }
+
+    .bar-track {
+      height: 3px;
+      background: var(--bg3);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--cobalt);
+      transition: width 1.1s ease, background .5s;
+    }
+
+    /* ── AI INSIGHTS ── */
+    .insight {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .insight:last-child {
+      border-bottom: none;
+    }
+
+    .insight-tag {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--cobalt);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: 5px;
+    }
+
+    .insight-text {
+      font-size: 13px;
+      color: var(--ink3);
+      line-height: 1.7;
+    }
+
+    /* ── BOTTOM ROW ── */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1.8fr 1fr 1fr;
+      gap: 18px;
+    }
+
+    /* ── HISTORY TABLE ── */
+    .hist-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .hist-table th {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink4);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .hist-table td {
+      padding: 12px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--ink3);
+    }
+
+    .hist-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .hist-val {
+      font-family: var(--ff-mono);
+      font-weight: 600;
+      color: var(--cobalt);
+    }
+
+    /* ── QUALITY RING ── */
+    .quality-ring-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 32px;
+      height: 100%;
+    }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--cobalt);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+      cursor: pointer;
+      z-index: 999;
+      transition: var(--trans);
+      text-decoration: none;
+    }
+
+    .fab:hover {
+      transform: scale(1.1) translateY(-4px);
+      box-shadow: 0 15px 30px rgba(37, 99, 235, 0.5);
+    }
+
+    .fab::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      background: var(--amber);
+      opacity: 0;
+      z-index: -1;
+      animation: fabPulse 2s infinite;
+    }
+
+    @keyframes fabPulse {
+      0% { transform: scale(1); opacity: 0.4; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    .fab-tooltip {
+      position: absolute;
+      right: 80px;
+      background: var(--ink);
+      color: white;
+      padding: 8px 16px;
+      border-radius: var(--r-sm);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: var(--trans);
+      transform: translateX(10px);
+    }
+
+    .fab:hover .fab-tooltip {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    @media(max-width:1100px) {
+      .metric-row {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bottom-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tribe-context-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body data-page="dashboard">
+  <canvas id="fluid-canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
+  <div id="_nav"></div>
+  <div class="page">
+    <div class="dash">
+
+      <!-- SESSION BAR -->
+      <div class="session-bar">
+        <div class="sb-left">
+          <div>
+            <div class="sb-label">Session</div>
+            <div class="sb-val">Study Session</div>
+          </div>
+          <div class="sb-sep"></div>
+          <div>
+            <div class="sb-label">Status</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+              <div class="pulse" id="status-dot"></div>
+              <span class="badge badge-focused" id="d-state-badge"
+                style="padding:4px 12px;font-size:10px;">Focused</span>
+            </div>
+          </div>
+          <div class="sb-sep"></div>
+          <div>
+            <div class="sb-label">Device</div>
+            <div class="sb-val" style="display:flex;align-items:center;gap:6px;">
+              <div class="pulse"></div>Connected · Simulation
+            </div>
+          </div>
+        </div>
+        <div class="session-timer" id="d-timer">00:00</div>
+      </div>
+
+      <!-- TRIBE CONTEXT BAR -->
+      <div class="tribe-card tribe-context-bar">
+        <div class="tcb-left">
+          <div class="tcb-material" id="t-material">Advanced Signals & Systems — Lecture 14</div>
+          <div class="tcb-pills">
+            <span class="cds-pill amber" id="t-exec">Executive 82</span>
+            <span class="cds-pill cobalt" id="t-lang">Language 67</span>
+            <span class="cds-pill emerald" id="t-vis">Visual 34</span>
+          </div>
+          <div class="tcb-rec" id="t-rec">Recommended session: 19 min</div>
+        </div>
+        <a href="brain-map.html" class="btn-ghost" style="padding: 6px 14px; font-size: 11px;">Change material</a>
+      </div>
+
+      <!-- METRIC CARDS -->
+      <div class="metric-row">
+        <div class="mc" id="mc-cli">
+          <div class="mc-label">Cognitive Load</div>
+          <div class="mc-val" id="d-cli">42<span class="mc-unit">/100</span></div>
+          <div class="mc-sub">GSR 50% · HRV 35% · Blink 15%</div>
+        </div>
+        <div class="mc">
+          <div class="mc-label">Heart Rate</div>
+          <div class="mc-val" style="color:var(--ink2)" id="d-hr">68<span class="mc-unit">bpm</span></div>
+          <div class="mc-sub">MAX30102 sensor</div>
+        </div>
+        <div class="mc">
+          <div class="mc-label">HRV RMSSD</div>
+          <div class="mc-val" style="color:var(--emerald)" id="d-hrv">52.4<span class="mc-unit">ms</span></div>
+          <div class="mc-sub">Stress resilience marker</div>
+        </div>
+        <div class="mc">
+          <div class="mc-label">Skin Response</div>
+          <div class="mc-val" id="d-gsr">14.2<span class="mc-unit">%</span></div>
+          <div class="mc-sub">Above your baseline</div>
+        </div>
+        <div class="mc">
+          <div class="mc-label">Blink Rate</div>
+          <div class="mc-val" style="color:var(--ink2)" id="d-blink">13.8<span class="mc-unit">/min</span></div>
+          <div class="mc-sub" id="d-blink-note">MediaPipe · camera</div>
+        </div>
+      </div>
+
+      <!-- MAIN GRID -->
+      <div class="main-grid">
+
+        <!-- LEFT: Chart + Brain -->
+        <div style="display:flex;flex-direction:column;gap:18px;">
+          <!-- Chart -->
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Cognitive Load — last 3 minutes</span>
+              <span class="panel-tag" style="display:flex;align-items:center;gap:5px;">
+                <div class="pulse"></div>2s resolution
+              </span>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="cli-chart" height="148"></canvas>
+            </div>
+          </div>
+          <!-- 3D Brain -->
+          <div class="brain-panel">
+            <div class="brain-panel-head">
+              <span class="panel-title">Cognitive Digital Twin</span>
+              <span class="panel-tag">Reacts live to your state</span>
+            </div>
+            <canvas id="dash-canvas" style="margin-top:50px;width:100%;height:280px;display:block;"></canvas>
+            <div class="brain-bottom">
+              <div class="bo-card">
+                <div class="bo-label">Your Load</div>
+                <div class="bo-val" id="bo-val" style="color:var(--cobalt);">42</div>
+              </div>
+              <span class="badge badge-focused" id="bo-badge">Focused</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CENTER: Pomodoro + Dossier -->
+        <div style="display:flex;flex-direction:column;gap:18px;">
+          <!-- Live Pomodoro -->
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Live Pomodoro</span>
+              <span class="panel-tag">Auto-adapts</span>
+            </div>
+            <div class="pomo-wrap">
+              <div class="pomo-ring">
+                <svg width="160" height="160" viewBox="0 0 160 160">
+                  <circle cx="80" cy="80" r="62" fill="none" stroke="var(--bg3)" stroke-width="8" />
+                  <circle id="pomo-arc" cx="80" cy="80" r="62" fill="none" stroke="#2563EB" stroke-width="8"
+                    stroke-linecap="round" stroke-dasharray="389.6" stroke-dashoffset="0"
+                    style="transition:stroke-dashoffset 1s linear,stroke .5s;" />
+                </svg>
+                <div class="pomo-center">
+                  <div class="pomo-time" id="pomo-time">19:00</div>
+                  <div class="pomo-phase-label" id="pomo-phase">Focus</div>
+                </div>
+              </div>
+              <div class="pomo-status" id="pomo-status">Session running at standard duration</div>
+              <p style="font-size: 10px; color: var(--ink4); font-style: italic; margin-top: -8px;">Duration set by TRIBE v2 based on material difficulty.</p>
+              <div class="pomo-log">
+                <div class="log-label">Adaptations</div>
+                <div id="pomo-log-entries">
+                  <p style="font-size:12px;color:var(--ink4);">No adaptations yet</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Technical Dossier -->
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Technical Dossier</span>
+              <span class="panel-tag">IEEE §V</span>
+            </div>
+            <div class="panel-body">
+              <div class="dossier-row"><span class="dossier-key">Hardware</span><span
+                  class="dossier-val">ESP32-WROOM-32</span></div>
+              <div class="dossier-row"><span class="dossier-key">Pulse / SpO₂</span><span
+                  class="dossier-val">MAX30102</span></div>
+              <div class="dossier-row"><span class="dossier-key">Skin Conductor</span><span class="dossier-val">GSR
+                  Analog</span></div>
+              <div class="dossier-row"><span class="dossier-key">Blink Tracker</span><span
+                  class="dossier-val">MediaPipe</span></div>
+              <div class="dossier-row"><span class="dossier-key">Model</span><span class="dossier-val">1D-CNN</span>
+              </div>
+              <div class="dossier-row"><span class="dossier-key">Accuracy</span><span class="dossier-val"
+                  style="color:var(--cobalt);">83.4%</span></div>
+              <div class="dossier-row"><span class="dossier-key">Latency</span><span class="dossier-val"
+                  style="color:var(--cobalt);">47ms</span></div>
+              <div class="dossier-row"><span class="dossier-key">EMA Alpha</span><span class="dossier-val">0.28</span>
+              </div>
+              <div class="dossier-row"><span class="dossier-key">Fusion</span><span class="dossier-val">GSR·50 + HRV·35
+                  + BL·15</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Sensors + Insights -->
+        <div style="display:flex;flex-direction:column;gap:18px;">
+          <!-- Raw sensors -->
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Live Readings</span>
+              <span class="panel-tag" style="display:flex;align-items:center;gap:5px;">
+                <div class="pulse"></div>Raw
+              </span>
+            </div>
+            <div class="panel-body" style="padding-top:10px;padding-bottom:10px;">
+              <div class="sensor-row">
+                <div class="sensor-top"><span class="sensor-name">Skin conductance</span><span class="sensor-val"
+                    id="r-gsr">2280</span></div>
+                <div class="bar-track">
+                  <div class="bar-fill" id="bar-gsr" style="width:55%"></div>
+                </div>
+              </div>
+              <div class="sensor-row">
+                <div class="sensor-top"><span class="sensor-name">Deviation from baseline</span><span class="sensor-val"
+                    id="r-gsrd">14.2%</span></div>
+                <div class="bar-track">
+                  <div class="bar-fill" id="bar-gsrd" style="width:17%"></div>
+                </div>
+              </div>
+              <div class="sensor-row">
+                <div class="sensor-top"><span class="sensor-name">Heart rate variability</span><span class="sensor-val"
+                    id="r-hrv" style="color:var(--emerald)">52.4 ms</span></div>
+                <div class="bar-track">
+                  <div class="bar-fill" id="bar-hrv" style="width:49%;background:var(--emerald)"></div>
+                </div>
+              </div>
+              <div class="sensor-row">
+                <div class="sensor-top"><span class="sensor-name">Blood oxygen SpO₂</span><span class="sensor-val"
+                    id="r-spo2" style="color:var(--emerald)">98%</span></div>
+                <div class="bar-track">
+                  <div class="bar-fill" id="bar-spo2" style="width:98%;background:var(--emerald)"></div>
+                </div>
+              </div>
+              <div class="sensor-row">
+                <div class="sensor-top"><span class="sensor-name">Blink rate</span><span class="sensor-val"
+                    id="r-blink">13.8 /min</span></div>
+                <div class="bar-track">
+                  <div class="bar-fill" id="bar-blink" style="width:57%"></div>
+                </div>
+              </div>
+              <div class="sensor-row">
+                <div class="sensor-top"><span class="sensor-name">Band battery</span><span class="sensor-val" id="r-bat"
+                    style="color:var(--emerald)">3860 mV</span></div>
+                <div class="bar-track">
+                  <div class="bar-fill" id="bar-bat" style="width:75%;background:var(--emerald)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- AI Insights -->
+          <div class="panel" style="border-color:rgba(37,99,235,.2);">
+            <div class="panel-head">
+              <span class="panel-title">AI Insights</span>
+              <span class="panel-tag">Every 5 min</span>
+            </div>
+            <div class="panel-body" style="padding-top:10px;padding-bottom:10px;">
+              <div class="insight">
+                <div class="insight-tag">Right now</div>
+                <div class="insight-text" id="ins-1">Engaged and handling load well — optimal zone.</div>
+              </div>
+              <div class="insight">
+                <div class="insight-tag">Suggestion</div>
+                <div class="insight-text" id="ins-2">This is ideal for problem-solving. Keep going.</div>
+              </div>
+              <div class="insight">
+                <div class="insight-tag">Trend</div>
+                <div class="insight-text" id="ins-3">Consistent focused state — timer at standard 25 min.</div>
+              </div>
+              <div class="insight">
+                <div class="insight-tag" style="color: var(--amber);">TRIBE v2 Alert</div>
+                <div class="insight-text" id="ins-tribe">All brain circuits operating within normal parameters for this material.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM ROW -->
+      <div class="bottom-grid">
+        <!-- History -->
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">Session History</span>
+            <span class="panel-tag">Last 7 days</span>
+          </div>
+          <div class="panel-body" style="padding-top:8px;padding-bottom:8px;">
+            <table class="hist-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Avg Load</th>
+                  <th>Focus Time</th>
+                  <th>Dominant Region</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Today</td>
+                  <td class="hist-val" id="hist-today">42</td>
+                  <td>Active</td>
+                  <td><span class="region-pill">Executive</span></td>
+                </tr>
+                <tr>
+                  <td>Yesterday</td>
+                  <td class="hist-val">44</td>
+                  <td>1h 42m</td>
+                  <td><span class="region-pill" style="color: var(--cobalt); border-color: rgba(37,99,235,0.2); background: var(--cobalt-l);">Language</span></td>
+                </tr>
+                <tr>
+                  <td>Monday</td>
+                  <td class="hist-val">52</td>
+                  <td>1h 18m</td>
+                  <td><span class="region-pill">Visual</span></td>
+                </tr>
+                <tr>
+                  <td>Sunday</td>
+                  <td class="hist-val">38</td>
+                  <td>2h 05m</td>
+                  <td><span class="region-pill">Executive</span></td>
+                </tr>
+                <tr>
+                  <td>Saturday</td>
+                  <td class="hist-val">61</td>
+                  <td>0h 55m</td>
+                  <td><span class="region-pill" style="color: var(--cobalt); border-color: rgba(37,99,235,0.2); background: var(--cobalt-l);">Language</span></td>
+                </tr>
+                <tr>
+                  <td>Friday</td>
+                  <td class="hist-val">47</td>
+                  <td>1h 30m</td>
+                  <td><span class="region-pill">Visual</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Quality ring -->
+        <div class="panel quality-ring-wrap">
+          <div class="panel-tag" style="text-align:center;">Session Quality</div>
+          <div style="position:relative;width:140px;height:140px;">
+            <svg width="140" height="140" viewBox="0 0 140 140" style="transform:rotate(-90deg);">
+              <circle cx="70" cy="70" r="56" fill="none" stroke="var(--bg3)" stroke-width="10" />
+              <circle id="q-arc" cx="70" cy="70" r="56" fill="none" stroke="#2563EB" stroke-width="10"
+                stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="140"
+                style="transition:stroke-dashoffset 2s ease,stroke .5s;" />
+            </svg>
+            <div
+              style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div id="q-pct"
+                style="font-family:var(--ff);font-size:34px;font-weight:900;color:var(--cobalt);letter-spacing:-1.5px;">
+                80%</div>
+              <div
+                style="font-size:10px;font-weight:600;color:var(--ink4);text-transform:uppercase;letter-spacing:.08em;">
+                Quality</div>
+            </div>
+          </div>
+          <p id="q-label" style="font-size:13px;color:var(--ink3);text-align:center;max-width:170px;line-height:1.6;">
+            Excellent session — staying in the zone.</p>
+        </div>
+        <!-- State card -->
+        <div class="panel"
+          style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:12px;text-align:center;">
+          <div class="panel-tag">Current State</div>
+          <div id="state-big"
+            style="font-family:var(--ff);font-size:30px;font-weight:900;color:var(--cobalt);transition:color .5s;letter-spacing:-1px;">
+            Focused</div>
+          <p style="font-size:13px;color:var(--ink3);max-width:170px;line-height:1.6;" id="state-desc">Engaged and
+            handling load well — optimal zone.</p>
+          <div style="margin-top:4px;">
+            <span class="badge badge-focused" id="state-badge-big">Focused</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <a href="brain-map.html" class="fab">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.48ZM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.48Z"/></svg>
+    <div class="fab-tooltip">Brain Intelligence</div>
+  </a>
+
+  <div id="_footer"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="aura.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Aura Background
+    let aura = null;
+    window.addEventListener('load', () => {
+      aura = new AuraBackground('fluid-canvas');
+    });
+
+    // ── SESSION TIMER ──
+    const _t0 = Date.now()
+    setInterval(() => {
+      const s = Math.floor((Date.now() - _t0) / 1000)
+      document.getElementById('d-timer').textContent = ST.fmtTime(s)
+    }, 1000)
+
+    // ── AREA CHART (monochrome Cobalt) ──
+    const cliHistory = Array(90).fill(null)
+    Chart.defaults.color = '#9CA3AF'
+    Chart.defaults.font.family = "'Inter',sans-serif"
+    Chart.defaults.font.size = 11
+    const cliCtx = document.getElementById('cli-chart').getContext('2d')
+    const cliGrad = cliCtx.createLinearGradient(0, 0, 0, 148)
+    cliGrad.addColorStop(0, 'rgba(37,99,235,0.18)'); cliGrad.addColorStop(1, 'rgba(37,99,235,0)')
+    const cliChart = new Chart(cliCtx, {
+      type: 'line',
+      data: { labels: Array(90).fill(''), datasets: [{ data: cliHistory, borderColor: '#2563EB', borderWidth: 2, backgroundColor: cliGrad, fill: true, tension: 0.4, pointRadius: 0, spanGaps: false }] },
+      options: { responsive: true, animation: false, scales: { y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { stepSize: 25 } }, x: { display: false } }, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+    })
+
+    // ── POMODORO ──
+    let pomoTotal = TRIBE.get().recommended_duration * 60, pomoElapsed = 0, pomoPhase = 'focus'
+    const CIRC = 389.6
+    document.getElementById('pomo-time').textContent = ST.fmtTime(pomoTotal)
+
+    setInterval(() => {
+      pomoElapsed++
+      if (pomoElapsed >= pomoTotal) {
+        pomoElapsed = 0
+        pomoPhase = pomoPhase === 'focus' ? 'break' : 'focus'
+        document.getElementById('pomo-phase').textContent = pomoPhase === 'focus' ? 'Focus' : 'Break'
+      }
+      const rem = pomoTotal - pomoElapsed
+      document.getElementById('pomo-time').textContent = ST.fmtTime(rem)
+      document.getElementById('pomo-arc').style.strokeDashoffset = CIRC * (pomoElapsed / pomoTotal)
+    }, 1000)
+
+    // ── 3D BRAIN ──
+    let dashBrain = null
+    loadThree().then(THREE => {
+      console.log("Neural Twin Engine Ready")
+      dashBrain = initAntigravityBrain(THREE, document.getElementById('dash-canvas'))
+    }).catch(err => console.error(err))
+
+    // ── INSIGHTS ──
+    const INSIGHTS = {
+      calm: ['Stress markers below baseline — this is a strong focus window.', 'HRV is high — your body is handling load with ease.', 'Load stable and low. Building productive momentum.'],
+      focused: ['Engaged, sustainable state. All signals indicate active but comfortable load.', 'Ideal for problem-solving. Skin response moderate, HRV holding.', 'Consistent focused state — timer at standard 25 min.'],
+      elevated: ['Skin conductance rising above baseline — early stress signs.', 'HRV dipped. A 2-min breathing pause could help.', 'Session shortened to bring you back to optimal zone.'],
+      overloaded: ['Cognitive overload detected. Continuing reduces retention.', 'Skin response significantly elevated. Your body says stop.', 'Break triggered. 7 minutes will restore working memory.']
+    }
+    const STATE_DESCS = {
+      calm: 'Below threshold — relaxed and absorbing well.',
+      focused: 'Engaged and handling load well — optimal zone.',
+      elevated: 'Load climbing — session shortened by 4 min.',
+      overloaded: '⚠ Overload detected — break triggered.'
+    }
+    function setInsights(s) {
+      const pool = INSIGHTS[s] || INSIGHTS.focused
+        ;[1, 2, 3].forEach((n, i) => { const e = document.getElementById('ins-' + n); if (e) e.textContent = pool[i] })
+      
+      const tribeIns = document.getElementById('ins-tribe')
+      if (tribeIns) {
+        if (s === 'elevated' || s === 'overloaded') {
+          tribeIns.textContent = TRIBE.getDominantRegion().recommendation
+        } else {
+          tribeIns.textContent = "All brain circuits operating within normal parameters for this material."
+        }
+      }
+    }
+
+    // ── MAIN DATA WIRING ──
+    let lastState = null, qualScore = 80
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v }
+    const setCol = (id, c) => { const e = document.getElementById(id); if (e) e.style.color = c }
+    const setBar = (id, pct, col) => { const e = document.getElementById(id); if (e) { e.style.width = Math.max(0, Math.min(100, pct)) + '%'; if (col) e.style.background = col } }
+
+    ST.subscribe(d => {
+      const col = ST.color(d.cli), sc = ST.stateColor(d.state)
+      const cls = d.state === 'overloaded' ? 'over' : d.state
+
+      // Metric cards
+      const cliEl = document.getElementById('d-cli')
+      if (cliEl) { cliEl.innerHTML = Math.round(d.cli) + '<span class="mc-unit">/100</span>'; cliEl.style.color = col }
+      set('d-hr', d.hr); set('d-hrv', d.hrv)
+      set('d-gsr', d.gsrDev); setCol('d-gsr', col)
+      set('d-blink', d.blink)
+      const blNote = document.getElementById('d-blink-note')
+      if (blNote) blNote.textContent = d.blink < 10 ? '⚠ Low — fatigue signal' : 'MediaPipe · camera'
+
+      // State badge
+      const badge = document.getElementById('d-state-badge')
+      if (badge) { badge.textContent = ST.label(d.state); badge.className = 'badge badge-' + cls }
+
+      // Brain
+      if (dashBrain) {
+        dashBrain.setColor(sc)
+        if (dashBrain.triggerNeuralSpike) dashBrain.triggerNeuralSpike(d.cli)
+      }
+      const bv = document.getElementById('bo-val')
+      if (bv) { bv.textContent = Math.round(d.cli); bv.style.color = col }
+      const bb = document.getElementById('bo-badge')
+      if (bb) { bb.textContent = ST.label(d.state); bb.className = 'badge badge-' + cls }
+
+      // Chart
+      cliHistory.push(Math.round(d.cli)); cliHistory.shift()
+      cliChart.data.datasets[0].data = [...cliHistory]
+      cliChart.data.datasets[0].borderColor = col
+      const g = cliCtx.createLinearGradient(0, 0, 0, 148)
+      g.addColorStop(0, col + '30'); g.addColorStop(1, col + '00')
+      cliChart.data.datasets[0].backgroundColor = g
+      cliChart.update('none')
+
+      // Raw sensors
+      set('r-gsr', d.gsrRaw); set('r-gsrd', d.gsrDev + '%')
+      set('r-hrv', d.hrv + ' ms'); set('r-spo2', d.spo2 + '%'); set('r-blink', d.blink + ' /min'); set('r-bat', d.battery + ' mV')
+      setBar('bar-gsr', (d.gsrRaw / 4095) * 100, col); setBar('bar-gsrd', (d.gsrDev / 82) * 100, col)
+      setBar('bar-hrv', ((d.hrv - 18) / 70) * 100, '#059669'); setBar('bar-spo2', d.spo2, '#059669')
+      setBar('bar-blink', (d.blink / 24) * 100, col); setBar('bar-bat', ((d.battery - 3400) / 780) * 100, '#059669')
+      setCol('r-gsr', col); setCol('r-gsrd', col); setCol('r-blink', col)
+
+      // History
+      set('hist-today', Math.round(d.cli)); setCol('hist-today', col)
+
+      // Quality
+      qualScore += d.cli < 56 ? .5 : -.7; qualScore = Math.max(20, Math.min(100, qualScore))
+      const qp = Math.round(qualScore), qc = ST.color(100 - qp)
+      set('q-pct', qp + '%'); setCol('q-pct', qc)
+      document.getElementById('q-arc').style.strokeDashoffset = 351.9 * (1 - qp / 100)
+      document.getElementById('q-arc').style.stroke = qc
+      document.getElementById('q-label').textContent = qp > 75 ? 'Excellent session — staying in the zone.' : qp > 50 ? 'Good session — a few elevated spikes.' : 'High load — break recommended.'
+
+      // State display
+      const stEl = document.getElementById('state-big')
+      if (stEl) { stEl.textContent = ST.label(d.state); stEl.style.color = sc }
+      set('state-desc', STATE_DESCS[d.state] || '')
+      const stBig = document.getElementById('state-badge-big')
+      if (stBig) { stBig.textContent = ST.label(d.state); stBig.className = 'badge badge-' + cls }
+
+      // Pomodoro adaptive logic
+      if (d.state !== lastState) {
+        lastState = d.state
+        const msgs = {
+          calm: 'Load below threshold — session extended +5 min',
+          focused: 'Optimal state — timer at standard 25 min',
+          elevated: 'Load rising — session shortened by 4 min',
+          overloaded: '⚠ Break triggered — cognitive overload detected'
+        }
+        document.getElementById('pomo-status').textContent = msgs[d.state] || ''
+        document.getElementById('pomo-arc').style.stroke = d.state === 'overloaded' ? '#EF4444' : sc
+        
+        // Adaptive timer
+        if (d.state === 'overloaded') { pomoTotal = 15 * 60; pomoElapsed = Math.max(0, pomoTotal - 90); pomoPhase = 'break'; document.getElementById('pomo-phase').textContent = 'Break' }
+        else if (d.state === 'elevated') pomoTotal = 21 * 60
+        else if (d.state === 'calm') pomoTotal = 30 * 60
+        else pomoTotal = TRIBE.get().recommended_duration * 60
+        
+        // Log entry
+        const log = document.getElementById('pomo-log-entries')
+        const noEntry = log.querySelector('p')
+        if (noEntry) noEntry.remove()
+        const t = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        const entry = document.createElement('div')
+        entry.className = 'log-entry'
+        entry.innerHTML = `<span class="log-time">${t}</span><span style="font-size:12px;color:var(--ink3);">${msgs[d.state] || ''}</span>`
+        log.prepend(entry)
+        if (log.children.length > 4) log.lastChild.remove()
+        setInsights(d.state)
+      }
+
+      // Aura color
+      if (aura) {
+        aura.setCLI(d.cli)
+      }
+    })
+
+    // ── TRIBE DATA WIRING ──
+    TRIBE.subscribe(data => {
+      set('t-material', data.material)
+      set('t-exec', 'Executive ' + data.executive)
+      set('t-lang', 'Language ' + data.language)
+      set('t-vis', 'Visual ' + data.visual)
+      set('t-rec', 'Recommended session: ' + data.recommended_duration + ' min')
+    })
+  </script>
+</body>
+
+</html>

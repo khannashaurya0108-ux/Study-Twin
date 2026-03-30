@@ -1,0 +1,5 @@
+{
+  "name": "StudyTwin",
+  "description": "A wearable cognitive load monitoring system with real-time adaptive study scheduling and neural domain analysis.",
+  "requestFramePermissions": ["camera"]
+}

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>StudyTwin — Get Started</title>
+<meta name="description" content="Set up your StudyTwin wearable in 3 minutes — power, calibrate, and sync with complete hardware guide."/>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+/* HERO */
+.gs-hero{
+  padding:calc(var(--nav-h)+80px) 0 80px;
+  background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(37,99,235,.04) 0%,transparent 60%);
+}
+.gs-hero-grid{ display:grid;grid-template-columns:1fr 420px;gap:80px;align-items:center; }
+.reqs-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-xl);
+  padding:40px; box-shadow:var(--shadow);
+}
+.req-row{ display:flex;align-items:center;gap:20px;margin-bottom:24px; }
+.req-row:last-of-type{ margin-bottom:0; }
+.req-icon{
+  width:44px; height:44px; border-radius:14px;
+  background:var(--cobalt-l); border:1px solid rgba(37,99,235,.14);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.req-title{ font-size:16px; font-weight:700; color:var(--ink); margin-bottom:2px; }
+.req-sub{ font-size:13px; font-weight:500; color:var(--ink4); }
+
+/* SETUP STEPS */
+.setup-wrap{
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--r-xl); overflow:hidden; box-shadow:var(--shadow);
+}
+.setup-step{ display:grid; grid-template-columns:100px 1fr; }
+.setup-step+.setup-step{ border-top:1px solid var(--border); }
+.setup-left{ display:flex;flex-direction:column;align-items:center;padding:48px 0;padding-right:32px; }
+.setup-num{
+  width:48px; height:48px; border-radius:50%;
+  background:var(--cobalt-l); border:1px solid rgba(37,99,235,.22);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--ff); font-size:20px; font-weight:800; color:var(--cobalt); flex-shrink:0;
+}
+.setup-line{ width:2px; flex:1; margin-top:12px; background:linear-gradient(to bottom,rgba(37,99,235,.18),transparent); border-radius:1px; }
+.setup-right{ padding:48px 0 48px 40px; border-left:1px solid var(--border); }
+.setup-tag{ font-family:var(--ff-mono); font-size:11px; font-weight:700; color:var(--cobalt); text-transform:uppercase; letter-spacing:.15em; margin-bottom:12px; }
+.setup-title{ font-size:24px; font-weight:800; color:var(--ink); margin-bottom:14px; letter-spacing:-.6px; }
+.setup-body{ font-size:16px; color:var(--ink3); line-height:1.76; max-width:600px; margin-bottom:20px; }
+.setup-note{
+  font-size:14px; color:var(--ink3); line-height:1.65;
+  padding:16px 22px; background:var(--cobalt-l);
+  border-left:4px solid var(--cobalt); border-radius:0 var(--r-sm) var(--r-sm) 0;
+  max-width:560px;
+}
+
+/* FAQ */
+.faq-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:64px; }
+.faq-item{
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl);
+  padding:36px 40px;
+  transition: var(--trans);
+}
+.faq-item:hover{ border-color:rgba(37,99,235,.2); transform:translateY(-4px); }
+.faq-q{ font-size:18px; font-weight:700; color:var(--ink); margin-bottom:14px; letter-spacing:-.3px; }
+.faq-a{ font-size:15px; color:var(--ink3); line-height:1.75; }
+
+@media(max-width:900px){
+  .gs-hero-grid{ grid-template-columns:1fr; }
+  .faq-grid{ grid-template-columns:1fr; }
+  .setup-step{ grid-template-columns:64px 1fr; }
+}
+</style>
+</head>
+<body data-page="get-started">
+<div id="_nav"></div>
+<div class="page">
+
+<!-- HERO -->
+<section class="gs-hero">
+  <div class="w">
+    <div class="gs-hero-grid">
+      <div>
+        <div class="eyebrow" data-reveal>Get started</div>
+        <h1 class="display-xl" style="margin-bottom:24px;" data-reveal>Up and running<br><span class="grad">in 3 minutes.</span></h1>
+        <p data-reveal style="font-size:18px;color:var(--ink3);line-height:1.76;max-width:460px;">No app to install. No Bluetooth pairing. Just the band, your browser, and you.</p>
+      </div>
+      <div class="reqs-card" data-reveal>
+        <div style="font-family:var(--ff-mono);font-size:11px;font-weight:700;color:var(--cobalt);text-transform:uppercase;letter-spacing:.15em;margin-bottom:32px;">What you need</div>
+        <div class="req-row">
+          <div class="req-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg></div>
+          <div><div class="req-title">StudyTwin sensor band</div><div class="req-sub">ESP32-WROOM-32 + sensors</div></div>
+        </div>
+        <div class="req-row">
+          <div class="req-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg></div>
+          <div><div class="req-title">WiFi connection</div><div class="req-sub">Band and laptop on same network</div></div>
+        </div>
+        <div class="req-row">
+          <div class="req-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+          <div><div class="req-title">Chrome or Edge browser</div><div class="req-sub">With webcam for blink detection</div></div>
+        </div>
+        <div style="border-top:1px solid var(--border);margin-top:32px;padding-top:32px;">
+          <a href="dashboard.html" class="btn-primary" style="width:100%;justify-content:center; padding: 14px;">Open Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SETUP STEPS -->
+<section class="section" style="background:var(--bg3);">
+  <div class="w">
+    <div class="eyebrow" data-reveal>Setup guide</div>
+    <h2 class="display-lg" data-reveal style="margin-bottom:48px;">Step by step.</h2>
+    <div class="setup-wrap">
+      <!-- Step 0: Upload -->
+      <div class="setup-step" data-reveal>
+        <div class="setup-left"><div class="setup-num" style="background:rgba(217,119,6,0.08); color:var(--amber); border-color:rgba(217,119,6,0.2);">0</div><div class="setup-line"></div></div>
+        <div class="setup-right">
+          <div class="setup-tag" style="color:var(--amber);">TRIBE v2 Pre-Analysis</div>
+          <div class="setup-title">Upload your study material</div>
+          <p class="setup-body">Before you put on the band, tell StudyTwin what you are about to study. Upload a PDF, paste a URL, or drop in your notes. TRIBE v2 will analyse which brain circuits your material demands and personalise your session parameters before calibration begins.</p>
+          <div class="setup-note" style="background:rgba(217,119,6,0.05); border-left-color:var(--amber);">This step takes 5-10 seconds on our GPU backend. You can skip it and use default parameters.</div>
+        </div>
+      </div>
+      <!-- Step 1: Power -->
+      <div class="setup-step" data-reveal>
+        <div class="setup-left"><div class="setup-num">1</div><div class="setup-line"></div></div>
+        <div class="setup-right">
+          <div class="setup-tag">ESP32 Calibration</div>
+          <div class="setup-title">Power the ESP32-WROOM</div>
+          <p class="setup-body">Connect the 3.7V Li-Po battery. Press and hold the button for 2 seconds. The SSD1306 OLED display lights up showing "STUDYTWIN" followed by a WiFi handshake animation. The ESP32 initialises all three sensor channels — MAX30102 (I2C), GSR (ADC GPIO34), and the OLED display.</p>
+          <div class="setup-note">On first use, pair WiFi credentials once using the setup tool. Subsequent boots auto-connect in under 3 seconds.</div>
+        </div>
+      </div>
+      <!-- Step 2: Signal Baseline -->
+      <div class="setup-step" data-reveal>
+        <div class="setup-left"><div class="setup-num">2</div><div class="setup-line"></div></div>
+        <div class="setup-right">
+          <div class="setup-tag">Baselining</div>
+          <div class="setup-title">60-second resting calibration</div>
+          <p class="setup-body">Wear the band on your non-dominant wrist. Attach finger electrode clips (index and middle finger). Sit still and relax for 60 seconds. StudyTwin measures your personal resting baseline for both HRV (RMSSD) and GSR — making every subsequent reading relative to your biology, not a population average.</p>
+          <div class="setup-note">The OLED displays a progress bar during calibration. When it shows READY, your baseline is locked for this session.</div>
+        </div>
+      </div>
+      <!-- Step 3: Sync -->
+      <div class="setup-step" data-reveal>
+        <div class="setup-left"><div class="setup-num">3</div></div>
+        <div class="setup-right">
+          <div class="setup-tag">Sync</div>
+          <div class="setup-title">Firebase data-stream handshake</div>
+          <p class="setup-body">Open the StudyTwin dashboard in Chrome. The ESP32 begins HTTP POST-ing JSON payloads of all sensor readings to Firebase Realtime Database. The browser subscribes via onSnapshot() — mean propagation latency is 154ms. Within seconds, live readings appear and the 3D Neural Twin comes to life.</p>
+          <div class="setup-note">Allow camera access when prompted for MediaPipe blink detection. Without camera, GSR + HRV still deliver a validated score at 85% of full accuracy.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section">
+  <div class="w">
+    <div class="eyebrow" data-reveal>Common questions</div>
+    <h2 class="display-lg" data-reveal>Good questions.</h2>
+    <div class="faq-grid" data-reveal-group>
+      <div class="faq-item" data-reveal><div class="faq-q">What is TRIBE v2 and why does it matter?</div><p class="faq-a">TRIBE v2 is Meta's brain-predictive AI, trained on fMRI data from 720 subjects. It predicts which brain circuits your specific study material will demand — before you start studying. This means StudyTwin can set your overload thresholds and session duration based on actual content difficulty, not just population averages. A lecture on control systems sets different parameters than a lecture on history.</p></div>
+      <div class="faq-item" data-reveal><div class="faq-q">Do I have to wear it the whole session?</div><p class="faq-a">Yes — StudyTwin reads your state continuously. If you remove the band mid-session, the dashboard shows your last known state until reconnection.</p></div>
+      <div class="faq-item" data-reveal><div class="faq-q">Will it work without camera access?</div><p class="faq-a">Yes. Blink rate contributes 15% to your score. Without it, GSR and HRV together give a validated reading at 85% of full accuracy.</p></div>
+      <div class="faq-item" data-reveal><div class="faq-q">How long does the battery last?</div><p class="faq-a">4-6 hours on a full charge (3.7V Li-Po). A standard study day is easily covered. Charges fully in under an hour via USB-C.</p></div>
+      <div class="faq-item" data-reveal><div class="faq-q">What if the readings seem wrong?</div><p class="faq-a">The most common cause is poor electrode contact. Ensure finger clips are snug but not tight. Re-calibrating the 60-second baseline fixes most issues.</p></div>
+      <div class="faq-item" data-reveal><div class="faq-q">Can two people share the same band?</div><p class="faq-a">Yes — each person signs into their own Firebase account and runs calibration. All baselines and history are stored separately per user.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section" style="background:var(--bg3);padding:100px 0;text-align:center;">
+  <div class="w">
+    <div style="max-width:600px;margin:0 auto;" data-reveal>
+      <h2 class="display-lg" style="margin-bottom:24px;">You're ready.<br><span class="grad">Start your first session.</span></h2>
+      <p style="font-size:18px;color:var(--ink3);line-height:1.76;margin-bottom:48px;">Open the dashboard, put on the band, calibrate for 60 seconds, and study. StudyTwin handles everything else.</p>
+      <a href="dashboard.html" class="btn-primary" style="font-size:16px;padding:14px 36px;">Open Dashboard</a>
+    </div>
+  </div>
+</section>
+
+</div>
+<hr/>
+<div id="_footer"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

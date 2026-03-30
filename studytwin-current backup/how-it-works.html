@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>StudyTwin — How It Works</title>
+<meta name="description" content="The signal processing pipeline behind StudyTwin — from sensor to adaptive session, validated by IEEE research."/>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+/* HERO */
+.hiw-hero{
+  padding:calc(var(--nav-h)+80px) 0 80px;
+  text-align:center;
+  background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(37,99,235,.04) 0%,transparent 60%);
+}
+.hiw-hero .lead{ font-size:18px;color:var(--ink3);line-height:1.76;max-width:560px;margin:0 auto 40px; }
+.hiw-actions{ display:flex;justify-content:center;gap:16px; }
+
+/* PIPELINE STEPS */
+.pipeline-step{
+  display:grid; grid-template-columns:240px 1fr;
+  border:1px solid var(--border); border-radius:var(--r-xl);
+  overflow:hidden; margin-bottom:20px;
+  background:var(--bg2);
+  box-shadow:var(--shadow);
+  transition: var(--trans);
+}
+.pipeline-step:hover{ border-color:rgba(37,99,235,.3); transform:translateY(-4px); }
+.pipe-sidebar{
+  padding:48px 32px; background:var(--bg3);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+.pipe-num{ font-family:var(--ff); font-size:64px; font-weight:900; letter-spacing:-4px; line-height:1; margin-bottom:12px; color:var(--cobalt); }
+.pipe-loc{ font-size:10px; font-weight:700; color:var(--ink4); letter-spacing:.15em; text-transform:uppercase; }
+.pipe-body{ padding:48px 52px; }
+.pipe-title{ font-size:24px; font-weight:800; color:var(--ink); letter-spacing:-.5px; margin-bottom:8px; }
+.pipe-sub{ font-family:var(--ff-mono); font-size:12px; font-weight:600; margin-bottom:24px; }
+.pipe-desc{ font-size:16px; color:var(--ink3); line-height:1.76; max-width:640px; margin-bottom:28px; }
+.pipe-tags{ display:flex; flex-wrap:wrap; gap:10px; }
+.ptag{
+  font-family:var(--ff-mono); font-size:11px; font-weight:600;
+  padding:6px 16px; border-radius:100px;
+  background:var(--cobalt-l); color:var(--cobalt);
+  border:1px solid rgba(37,99,235,.18);
+}
+
+/* SIGNALS */
+.sig-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin-top:64px; }
+.sig-card{
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl);
+  padding:44px 36px; position:relative; overflow:hidden;
+  transition: var(--trans);
+}
+.sig-card:hover{ border-color:rgba(37,99,235,.3); transform:translateY(-8px); box-shadow:0 25px 50px -12px rgba(37,99,235,0.15); }
+.sig-icon-wrap{
+  width:56px; height:56px; border-radius:16px;
+  background:var(--cobalt-l); border:1px solid rgba(37,99,235,.12);
+  display:flex; align-items:center; justify-content:center; margin-bottom:28px;
+}
+.sig-weight-row{ display:flex; align-items:center; gap:12px; margin-top:24px; }
+.sig-weight-bar{ flex:1; height:4px; background:var(--bg3); border-radius:2px; overflow:hidden; }
+.sig-weight-fill{ height:100%; background:var(--cobalt); border-radius:2px; width:0; transition:width 1.5s var(--ease); }
+.sig-weight-label{ font-family:var(--ff-mono); font-size:12px; font-weight:700; color:var(--cobalt); white-space:nowrap; }
+
+/* STATES */
+.states-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-top:64px; }
+.state-card{
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl); overflow:hidden;
+  transition: var(--trans);
+}
+.state-card:hover{ transform:translateY(-6px); border-color:rgba(37,99,235,0.3); }
+.state-top{ padding:32px 28px; border-bottom:1px solid var(--border); }
+.state-range{ font-family:var(--ff); font-size:52px; font-weight:900; line-height:1; margin-bottom:14px; letter-spacing:-2px; }
+.state-body{ padding:24px 28px; }
+.state-desc{ font-size:15px; color:var(--ink3); line-height:1.7; margin-bottom:18px; }
+.state-acts{ font-family:var(--ff-mono); font-size:12px; color:var(--ink4); line-height:2; }
+
+/* TRIBE ROUTING SECTION */
+.routing-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 64px; margin-top: 64px; align-items: start; }
+.flow-diagram { display: flex; flex-direction: column; gap: 12px; }
+.flow-step {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 16px 20px; display: flex; align-items: center; gap: 16px;
+  position: relative; transition: var(--trans);
+}
+.flow-step:hover { border-color: var(--cobalt); transform: translateX(8px); }
+.flow-step:not(:last-child)::after {
+  content: ''; position: absolute; left: 30px; top: 100%; width: 2px; height: 12px; background: var(--border);
+}
+.flow-icon { width: 24px; height: 24px; border-radius: 6px; background: var(--cobalt-l); display: flex; align-items: center; justify-content: center; color: var(--cobalt); font-weight: 800; font-size: 12px; }
+.flow-text { font-size: 13px; font-weight: 600; color: var(--ink2); }
+
+.region-stack { display: flex; flex-direction: column; gap: 16px; }
+.region-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 24px 28px; transition: var(--trans);
+}
+.region-card:hover { border-color: var(--amber); transform: translateY(-4px); }
+.region-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.region-card-title { font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -.3px; }
+.region-card-body { font-size: 14px; color: var(--ink3); line-height: 1.6; }
+.region-card-route { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-family: var(--ff-mono); font-size: 12px; color: var(--amber); font-weight: 600; }
+
+@media(max-width:1000px){
+  .pipeline-step{ grid-template-columns:1fr; }
+  .pipe-sidebar{ border-right:none; border-bottom:1px solid var(--border); flex-direction:row; align-items:center; gap:20px; padding:32px; }
+  .sig-grid{ grid-template-columns:1fr; }
+  .states-grid{ grid-template-columns:1fr 1fr; }
+  .routing-grid { grid-template-columns: 1fr; gap: 48px; }
+}
+</style>
+</head>
+<body data-page="how-it-works">
+<div id="_nav"></div>
+<div class="page">
+
+<!-- HERO -->
+<section class="hiw-hero">
+  <div class="w">
+    <div class="eyebrow" style="justify-content:center;" data-reveal>How it works</div>
+    <h1 class="display-xl" style="margin-bottom:24px;" data-reveal>Simple to wear.<br><span class="grad">Intelligent inside.</span></h1>
+    <p class="lead" data-reveal>You put on the band, open the app, and study. StudyTwin reads your body, calculates your state, and adapts your session — automatically.</p>
+    <div class="hiw-actions" data-reveal>
+      <a href="get-started.html" class="btn-primary">Set up your device</a>
+      <a href="dashboard.html" class="btn-ghost">Live Demo</a>
+    </div>
+  </div>
+</section>
+
+<!-- SIGNAL PROCESSING PIPELINE -->
+<section class="section">
+  <div class="w">
+    <div class="eyebrow" data-reveal>Signal processing pipeline</div>
+    <h2 class="display-lg" data-reveal style="margin-bottom:16px;">Five layers.<br><span class="muted">Distributed intelligence.</span></h2>
+    <p data-reveal style="font-size:16px;color:var(--ink3);max-width:540px;margin-bottom:56px;">ML inference at the edge. Sync in the cloud. Adaptation in the browser. Pre-analysis in the GPU cluster.</p>
+
+    <!-- L1: Sensing -->
+    <div class="pipeline-step" data-reveal>
+      <div class="pipe-sidebar">
+        <div><div class="pipe-num">L1</div><div style="font-size:20px;font-weight:700;color:var(--ink);">Sensing</div></div>
+        <div class="pipe-loc">Wearable · Physical</div>
+      </div>
+      <div class="pipe-body">
+        <div class="pipe-title">Biosignal Acquisition (MAX30102/GSR)</div>
+        <div class="pipe-sub" style="color:var(--cobalt);">MAX30102 (PPG) · GSR Electrodes · MediaPipe</div>
+        <p class="pipe-desc">Three validated biomarkers of cognitive load, captured in real time. The Grove GSR sensor outputs a signal conditioned by an LM324 op-amp. MAX30102 extracts inter-beat intervals via 880nm infrared PPG for HRV. Blink rate runs in-browser via MediaPipe Face Mesh — zero extra hardware.</p>
+        <div class="pipe-tags">
+          <span class="ptag">MAX30102 · 880nm PPG</span>
+          <span class="ptag">Grove GSR · LM324</span>
+          <span class="ptag">I2C · ADC GPIO34</span>
+          <span class="ptag">MediaPipe Face Mesh</span>
+          <span class="ptag">60s baseline calibration</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- L2: Edge AI -->
+    <div class="pipeline-step" data-reveal>
+      <div class="pipe-sidebar">
+        <div><div class="pipe-num" style="color:var(--amber);">L2</div><div style="font-size:20px;font-weight:700;color:var(--ink);">Edge AI</div></div>
+        <div class="pipe-loc">ESP32 · On-device</div>
+      </div>
+      <div class="pipe-body">
+        <div class="pipe-title">1D-CNN Inference (Edge AI)</div>
+        <div class="pipe-sub" style="color:var(--amber);">1D-CNN TinyML Model · 47ms Inference Latency</div>
+        <p class="pipe-desc">The ESP32 WROOM-32 runs a 1D-CNN trained on Edge Impulse, performing 4-class cognitive state inference entirely on-device at 47ms latency. Signal preprocessing — EMA smoothing (alpha = 0.28), baseline drift correction, RMSSD extraction — runs in Arduino C++ firmware.</p>
+        <div class="pipe-tags">
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">ESP32 WROOM-32 · 240MHz</span>
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">1D-CNN · Edge Impulse</span>
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">EMA smoothing · alpha=0.28</span>
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">47ms inference</span>
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">SSD1306 OLED display</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- L3: Cloud Sync -->
+    <div class="pipeline-step" data-reveal>
+      <div class="pipe-sidebar">
+        <div><div class="pipe-num" style="color:#3B82F6;">L3</div><div style="font-size:20px;font-weight:700;color:var(--ink);">Cloud Sync</div></div>
+        <div class="pipe-loc">Firebase · Cloud</div>
+      </div>
+      <div class="pipe-body">
+        <div class="pipe-title">Synchronisation Layer</div>
+        <div class="pipe-sub" style="color:#3B82F6;">Realtime DB · Auth · Firestore</div>
+        <p class="pipe-desc">Firebase Realtime Database receives the ESP32 JSON payload and immediately pushes it to all subscribed browser clients via onSnapshot(). Mean propagation latency: 154ms. Firebase Auth handles per-user isolation. Firestore stores session history for longitudinal analysis.</p>
+        <div class="pipe-tags">
+          <span class="ptag">Firebase Realtime DB</span>
+          <span class="ptag">onSnapshot() push</span>
+          <span class="ptag">154ms propagation</span>
+          <span class="ptag">Firebase Auth · multi-user</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- L4: Dashboard -->
+    <div class="pipeline-step" data-reveal>
+      <div class="pipe-sidebar">
+        <div><div class="pipe-num" style="color:var(--emerald);">L4</div><div style="font-size:20px;font-weight:700;color:var(--ink);">Dashboard</div></div>
+        <div class="pipe-loc">Browser · PWA</div>
+      </div>
+      <div class="pipe-body">
+        <div class="pipe-title">Closed-Loop Adaptation</div>
+        <div class="pipe-sub" style="color:var(--emerald);">Three.js · Chart.js · Adaptive Pomodoro</div>
+        <p class="pipe-desc">The dashboard fuses the three biosignals into a final CLI score, drives the adaptive Pomodoro engine, renders the 3D Digital Twin, and generates session insights. All adaptation logic runs client-side — it functions even if Firebase degrades.</p>
+        <div class="pipe-tags">
+          <span class="ptag" style="background:rgba(5,150,105,.08);color:var(--emerald);border-color:rgba(5,150,105,.22);">3D Neural Twin · WebGL</span>
+          <span class="ptag" style="background:rgba(5,150,105,.08);color:var(--emerald);border-color:rgba(5,150,105,.22);">Chart.js · rolling CLI</span>
+          <span class="ptag" style="background:rgba(5,150,105,.08);color:var(--emerald);border-color:rgba(5,150,105,.22);">Adaptive Pomodoro engine</span>
+          <span class="ptag" style="background:rgba(5,150,105,.08);color:var(--emerald);border-color:rgba(5,150,105,.22);">AI insights generation</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- L5: TRIBE v2 -->
+    <div class="pipeline-step" data-reveal style="border-left: 4px solid var(--amber);">
+      <div class="pipe-sidebar">
+        <div><div class="pipe-num" style="color:var(--amber);">L5</div><div style="font-size:20px;font-weight:700;color:var(--ink);">TRIBE v2</div></div>
+        <div class="pipe-loc">Kaggle GPU · Pre-session</div>
+      </div>
+      <div class="pipe-body">
+        <div class="pipe-title">Brain Circuit Intelligence</div>
+        <div class="pipe-sub" style="color:var(--amber);">Meta TRIBE v2 · fMRI Foundation Model</div>
+        <p class="pipe-desc">Before each session, TRIBE v2 — Meta's brain-predictive foundation model trained on 1,115 hours of fMRI data from 720 subjects — analyses your study material and predicts which brain circuits it will demand. Content Demand Scores for three regions (executive, language, visual) are written to Firebase session metadata. The adaptive engine uses these scores to set personalised session parameters before you put on the headband.</p>
+        <div class="pipe-tags">
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">20,484 cortical vertices</span>
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">3 Content Demand Scores</span>
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">Kaggle T4 GPU · Free tier</span>
+          <span class="ptag" style="background:rgba(217,119,6,.08);color:var(--amber);border-color:rgba(217,119,6,.22);">Pre-session analysis</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THREE SIGNALS -->
+<section class="section" style="background:var(--bg3);">
+  <div class="w">
+    <div class="eyebrow" data-reveal>The signals</div>
+    <h2 class="display-lg" data-reveal>Three ways your body<br><span class="muted">tells us how you're doing.</span></h2>
+    <div class="sig-grid" data-reveal-group>
+      <div class="sig-card" data-reveal>
+        <div class="sig-icon-wrap"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+        <h3 style="font-size:20px;font-weight:700;color:var(--ink);margin-bottom:12px;letter-spacing:-.4px;">Skin conductance (GSR)</h3>
+        <p style="font-size:15px;color:var(--ink3);line-height:1.75;">When your brain works hard, your sympathetic nervous system activates and your skin conducts electricity differently. The Grove GSR sensor on your wrist detects this in real time — a reliable, well-studied marker of cognitive load.</p>
+        <div class="sig-weight-row">
+          <div class="sig-weight-bar"><div class="sig-weight-fill" data-width="50"></div></div>
+          <span class="sig-weight-label">50% weight</span>
+        </div>
+      </div>
+      <div class="sig-card" data-reveal>
+        <div class="sig-icon-wrap"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+        <h3 style="font-size:20px;font-weight:700;color:var(--ink);margin-bottom:12px;letter-spacing:-.4px;">Heart rate variability (HRV)</h3>
+        <p style="font-size:15px;color:var(--ink3);line-height:1.75;">The variation between heartbeats is deeply meaningful. High variability means your body is calm. When HRV drops, your nervous system is under load. MAX30102 measures this continuously via 880nm infrared PPG.</p>
+        <div class="sig-weight-row">
+          <div class="sig-weight-bar"><div class="sig-weight-fill" data-width="35"></div></div>
+          <span class="sig-weight-label">35% weight</span>
+        </div>
+      </div>
+      <div class="sig-card" data-reveal>
+        <div class="sig-icon-wrap"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <h3 style="font-size:20px;font-weight:700;color:var(--ink);margin-bottom:12px;letter-spacing:-.4px;">Blink rate</h3>
+        <p style="font-size:15px;color:var(--ink3);line-height:1.75;">Normal: 15-20 blinks per minute. Deep focus or fatigue drops this below 10. Your webcam detects this via MediaPipe Face Mesh — no hardware, no clip, nothing to attach to your face.</p>
+        <div class="sig-weight-row">
+          <div class="sig-weight-bar"><div class="sig-weight-fill" data-width="15"></div></div>
+          <span class="sig-weight-label">15% weight</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FUSION FORMULA -->
+<section class="section">
+  <div class="w">
+    <div class="eyebrow" data-reveal>Weighted fusion (IEEE §V)</div>
+    <h2 class="display-lg" data-reveal>One equation. One score.</h2>
+    <div class="card" style="text-align:center; margin-top: 56px; padding: 64px 48px;" data-reveal>
+      <p style="font-size:15px;color:var(--ink4);font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:.1em;">Cognitive Load Index</p>
+      <div style="font-family:var(--ff-mono); font-size:clamp(20px, 3vw, 32px); font-weight:700; color:var(--cobalt); letter-spacing:-1px; margin-bottom:32px;">CLI = (GSR × 0.50) + (HRV × 0.35) + (Blink × 0.15)</div>
+      <p style="font-size:16px;color:var(--ink3);line-height:1.8;max-width:580px;margin:0 auto;">Each signal is normalised to 0-100, then weighted according to predictive power validated against NASA-TLX ground truth. Smoothed with EMA (alpha = 0.28) to prevent jitter.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOUR STATES -->
+<section class="section" style="background:var(--bg3);">
+  <div class="w">
+    <div class="eyebrow" data-reveal>Your states</div>
+    <h2 class="display-lg" data-reveal style="margin-bottom:16px;">One score. Four states.<br><span class="muted">A different response to each.</span></h2>
+    <p data-reveal style="font-size:16px;color:var(--ink3);max-width:540px;margin-bottom:0;">Your Cognitive Load runs 0-100. StudyTwin maps it to four states and responds differently to each.</p>
+    <div class="states-grid" data-reveal-group>
+      <div class="state-card" data-reveal>
+        <div class="state-top"><div class="state-range" style="color:var(--emerald);">0-25</div><span class="badge badge-calm">Calm</span></div>
+        <div class="state-body"><p class="state-desc">Your body is relaxed and your mind has headroom. A great window for complex, new material.</p><div class="state-acts"><div>&#8594; Timer extended +5 min</div><div>&#8594; Harder material suggested</div></div></div>
+      </div>
+      <div class="state-card" data-reveal>
+        <div class="state-top"><div class="state-range" style="color:var(--cobalt);">26-55</div><span class="badge badge-focused">Focused</span></div>
+        <div class="state-body"><p class="state-desc">Engaged and handling load well. You're in the optimal learning zone — no changes needed.</p><div class="state-acts"><div>&#8594; Timer runs normally</div><div>&#8594; No intervention</div></div></div>
+      </div>
+      <div class="state-card" data-reveal>
+        <div class="state-top"><div class="state-range" style="color:var(--amber);">56-77</div><span class="badge badge-elevated">Elevated</span></div>
+        <div class="state-body"><p class="state-desc">Load is climbing. Still functional, but retention is dipping. Time to ease up slightly.</p><div class="state-acts"><div>&#8594; Session shortened -4 min</div><div>&#8594; Gentler task suggested</div></div></div>
+      </div>
+      <div class="state-card" data-reveal>
+        <div class="state-top"><div class="state-range" style="color:var(--red);">78-100</div><span class="badge badge-over">Overloaded</span></div>
+        <div class="state-body"><p class="state-desc">Working memory saturated. Continuing now costs more than it gives. A break restores capacity.</p><div class="state-acts"><div>&#8594; Break triggered (15 min)</div><div>&#8594; Timer paused</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRIBE ROUTING LOGIC -->
+<section class="section">
+  <div class="w">
+    <div class="eyebrow" data-reveal>TRIBE v2 Intelligence</div>
+    <h2 class="display-lg" data-reveal>How TRIBE v2 Changes<br><span class="muted">the Routing Logic.</span></h2>
+    <div class="routing-grid">
+      <div class="flow-diagram" data-reveal-group>
+        <div class="flow-step" data-reveal><div class="flow-icon">1</div><div class="flow-text">Material uploaded to Kaggle GPU</div></div>
+        <div class="flow-step" data-reveal><div class="flow-icon">2</div><div class="flow-text">TRIBE v2 predicts circuit demand</div></div>
+        <div class="flow-step" data-reveal><div class="flow-icon">3</div><div class="flow-text">CDS scores written to Firebase</div></div>
+        <div class="flow-step" data-reveal><div class="flow-icon">4</div><div class="flow-text">Dashboard reads session metadata</div></div>
+        <div class="flow-step" data-reveal><div class="flow-icon">5</div><div class="flow-text">Session parameters personalised</div></div>
+        <div class="flow-step" data-reveal><div class="flow-icon">6</div><div class="flow-text">Biosensors take over in real time</div></div>
+      </div>
+      <div class="region-stack" data-reveal-group>
+        <div class="region-card" data-reveal>
+          <div class="region-card-head"><span class="region-card-title">Executive Circuit</span><span class="region-pill">High Demand</span></div>
+          <p class="region-card-body">Loaded by complex logic, multi-step problem solving, and abstract reasoning. Demands high working memory.</p>
+          <div class="region-card-route">→ ROUTE TO: Visual review material (diagrams, flowcharts)</div>
+        </div>
+        <div class="region-card" data-reveal>
+          <div class="region-card-head"><span class="region-card-title">Language Circuit</span><span class="region-pill">High Demand</span></div>
+          <p class="region-card-body">Loaded by dense reading, vocabulary acquisition, and verbal reasoning. Saturated by technical prose.</p>
+          <div class="region-card-route">→ ROUTE TO: Numerical or Visual content (equations, graphs)</div>
+        </div>
+        <div class="region-card" data-reveal>
+          <div class="region-card-head"><span class="region-card-title">Visual Circuit</span><span class="region-pill">High Demand</span></div>
+          <p class="region-card-body">Loaded by complex animations, spatial reasoning, and diagram-heavy content. Saturated by high-motion video.</p>
+          <div class="region-card-route">→ ROUTE TO: Audio or Text-light reading material</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA PIPELINE SUMMARY -->
+<section class="section" style="background:var(--bg3);">
+  <div class="w">
+    <div class="eyebrow" data-reveal>Data pipeline</div>
+    <h2 class="display-lg" data-reveal>Signal to action, step by step.</h2>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:0; margin-top:56px; border:1px solid var(--border); border-radius:var(--r-xl); overflow:hidden;" data-reveal-group>
+      <div style="padding:40px 32px; border-right:1px solid var(--border); background:var(--bg2);" data-reveal>
+        <div style="font-family:var(--ff-mono); font-size:11px; font-weight:700; color:var(--cobalt); text-transform:uppercase; letter-spacing:.15em; margin-bottom:16px;">Step 01 · Sense</div>
+        <div style="font-size:18px; font-weight:800; color:var(--ink); margin-bottom:16px;">Capture</div>
+        <ul style="list-style:none; font-size:14px; color:var(--ink3); line-height:2;">
+          <li>&#8594; GSR ADC reading</li>
+          <li>&#8594; MAX30102 IBI</li>
+          <li>&#8594; MediaPipe blink</li>
+          <li>&#8594; SpO2 percentage</li>
+        </ul>
+      </div>
+      <div style="padding:40px 32px; border-right:1px solid var(--border); background:var(--bg2);" data-reveal>
+        <div style="font-family:var(--ff-mono); font-size:11px; font-weight:700; color:var(--cobalt); text-transform:uppercase; letter-spacing:.15em; margin-bottom:16px;">Step 02 · Process</div>
+        <div style="font-size:18px; font-weight:800; color:var(--ink); margin-bottom:16px;">Edge AI</div>
+        <ul style="list-style:none; font-size:14px; color:var(--ink3); line-height:2;">
+          <li>&#8594; 60s calibration</li>
+          <li>&#8594; EMA smoothing</li>
+          <li>&#8594; RMSSD extraction</li>
+          <li>&#8594; 1D-CNN at 47ms</li>
+        </ul>
+      </div>
+      <div style="padding:40px 32px; border-right:1px solid var(--border); background:var(--bg2);" data-reveal>
+        <div style="font-family:var(--ff-mono); font-size:11px; font-weight:700; color:var(--cobalt); text-transform:uppercase; letter-spacing:.15em; margin-bottom:16px;">Step 03 · Fuse</div>
+        <div style="font-size:18px; font-weight:800; color:var(--ink); margin-bottom:16px;">Fusion</div>
+        <ul style="list-style:none; font-size:14px; color:var(--ink3); line-height:2;">
+          <li>&#8594; CLI weighted sum</li>
+          <li>&#8594; JSON payload built</li>
+          <li>&#8594; Firebase push</li>
+          <li>&#8594; 154ms propagation</li>
+        </ul>
+      </div>
+      <div style="padding:40px 32px; background:var(--bg2);" data-reveal>
+        <div style="font-family:var(--ff-mono); font-size:11px; font-weight:700; color:var(--cobalt); text-transform:uppercase; letter-spacing:.15em; margin-bottom:16px;">Step 04 · Adapt</div>
+        <div style="font-size:18px; font-weight:800; color:var(--ink); margin-bottom:16px;">Closed-Loop</div>
+        <ul style="list-style:none; font-size:14px; color:var(--ink3); line-height:2;">
+          <li>&#8594; Pomodoro mutation</li>
+          <li>&#8594; Timer shortening</li>
+          <li>&#8594; Neural twin shift</li>
+          <li>&#8594; Session logging</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+<hr/>
+<div id="_footer"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="app.js"></script>
+<script>
+// Animate signal weight bars on scroll
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      e.target.querySelectorAll('.sig-weight-fill').forEach(bar => { bar.style.width = bar.dataset.width + '%' })
+      io.unobserve(e.target)
+    }
+  })
+}, {threshold:.2})
+document.querySelectorAll('.sig-card').forEach(c => io.observe(c))
+</script>
+</body>
+</html>
