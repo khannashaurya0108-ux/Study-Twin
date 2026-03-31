@@ -22,13 +22,16 @@ const ST_Engine = {
 ST_Engine.start()
 
 const FIREBASE_CONFIG = {
-  apiKey: "PASTE_YOUR_KEY_HERE",
-  authDomain: "PASTE_YOUR_DOMAIN_HERE",
-  databaseURL: "PASTE_YOUR_DB_URL_HERE",
-  projectId: "PASTE_YOUR_PROJECT_ID_HERE"
+  apiKey: "AIzaSyBXZZ-wN2wzguf35rfPaLqm61gx0LoxIAA",
+  authDomain: "studytwin-rvce.firebaseapp.com",
+  databaseURL: "https://studytwin-rvce-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "studytwin-rvce",
+  storageBucket: "studytwin-rvce.firebasestorage.app",
+  messagingSenderId: "345837599600",
+  appId: "1:345837599600:web:f2c191ab3cf7c24ca5edb5"
 }
 
-const DATA_SOURCE = 'simulation'  // Change to 'firebase' when hardware is ready
+const DATA_SOURCE = 'firebase'
 
 /*
   Firebase Realtime Database Schema
