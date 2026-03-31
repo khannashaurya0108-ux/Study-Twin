@@ -77,6 +77,7 @@ function connectFirebase() {
     }
 
     const auth = window.firebase.auth();
+    auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
     const db = window.firebase.database();
 
     // Google Sign-In function — called by the button in dashboard.html
@@ -117,10 +118,11 @@ function connectFirebase() {
           if (ST.tick) setInterval(ST.tick, 2000);
         });
       } else {
-        // User is signed out — show overlay
+        // User is signed out — show overlay, stop simulation
         if (overlay) overlay.style.display = 'flex';
-        // Fall back to simulation while not signed in
-        if (ST.tick) setInterval(ST.tick, 2000);
+        // Clear any running simulation intervals
+        const highestId = setInterval(() => {}, 0);
+        for (let i = 0; i < highestId; i++) clearInterval(i);
       }
     });
 
