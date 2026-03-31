@@ -595,6 +595,29 @@
 </head>
 
 <body data-page="dashboard">
+<div id="auth-overlay" style="position:fixed;inset:0;background:#050D1F;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;">
+  <div style="font-family:'Inter',sans-serif;text-align:center;">
+    <div style="font-size:32px;font-weight:900;color:white;margin-bottom:8px;">Study<span style="color:#2563EB;">Twin</span></div>
+    <div style="font-size:14px;color:#6B7280;margin-bottom:40px;">Sign in to start your session</div>
+    <button id="google-signin-btn" style="background:#2563EB;color:white;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;">Sign in with Google</button>
+    <div id="auth-error" style="color:#EF4444;font-size:13px;margin-top:16px;display:none;"></div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+  var btn = document.getElementById('google-signin-btn');
+  if (btn) {
+    btn.addEventListener('click', function() {
+      var provider = new window.firebase.auth.GoogleAuthProvider();
+      window.firebase.auth().signInWithPopup(provider).catch(function(err) {
+        var errEl = document.getElementById('auth-error');
+        if (errEl) { errEl.textContent = 'Sign-in failed: ' + err.message; errEl.style.display = 'block'; }
+      });
+    });
+  }
+});
+</script>
   <canvas id="fluid-canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
   <div id="_nav"></div>
   <div class="page">
@@ -961,6 +984,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="aura.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="app.js"></script>
   <script>
     // Aura Background
@@ -1155,6 +1181,7 @@
       set('t-rec', 'Recommended session: ' + data.recommended_duration + ' min')
     })
   </script>
+
 </body>
 
 </html>

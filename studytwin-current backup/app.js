@@ -69,34 +69,61 @@ function connectFirebase() {
 
   Promise.all([
     loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js'),
-    loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js')
+    loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js'),
+    loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js')
   ]).then(() => {
     if (!window.firebase.apps.length) {
       window.firebase.initializeApp(FIREBASE_CONFIG);
     }
+
+    const auth = window.firebase.auth();
     const db = window.firebase.database();
-    const liveRef = db.ref('/sessions/live');
-    
-    liveRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const transformed = {
-          ...ST.get(),
-          gsrRaw: data.gsr_raw,
-          gsrDev: data.gsr_z * 100,
-          hrv: data.rmssd,
-          cli: data.cli_score,
-          state: data.cli_state,
-          battery: data.battery
-        };
-        if (ST._subs) {
-          ST._subs.forEach(fn => fn(transformed));
-        }
+
+    // Google Sign-In function — called by the button in dashboard.html
+    window.signInWithGoogle = function() {
+      const provider = new window.firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(err => {
+        const errEl = document.getElementById('auth-error');
+        if (errEl) { errEl.textContent = 'Sign-in failed. Try again.'; errEl.style.display = 'block'; }
+      });
+    };
+
+    // Watch auth state — show/hide overlay, wire Firebase paths to UID
+    auth.onAuthStateChanged(user => {
+      const overlay = document.getElementById('auth-overlay');
+      if (user) {
+        // User is signed in — hide overlay and start live data
+        if (overlay) overlay.style.display = 'none';
+        const uid = user.uid;
+        const liveRef = db.ref('/sessions/' + uid + '/live');
+        liveRef.on('value', (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            const transformed = {
+              ...ST.get(),
+              gsrRaw: data.gsr_raw,
+              gsrDev: data.gsr_z * 100,
+              hrv: data.rmssd,
+              cli: data.cli_score,
+              state: data.cli_state,
+              battery: data.battery
+            };
+            if (ST._subs) {
+              ST._subs.forEach(fn => fn(transformed));
+            }
+          }
+        }, (error) => {
+          console.warn('Firebase connection error, falling back to simulation:', error);
+          if (ST.tick) setInterval(ST.tick, 2000);
+        });
+      } else {
+        // User is signed out — show overlay
+        if (overlay) overlay.style.display = 'flex';
+        // Fall back to simulation while not signed in
+        if (ST.tick) setInterval(ST.tick, 2000);
       }
-    }, (error) => {
-      console.warn('Firebase connection error, falling back to simulation:', error);
-      if (ST.tick) setInterval(ST.tick, 2000);
     });
+
   }).catch(err => {
     console.warn('Failed to load Firebase SDK, falling back to simulation:', err);
     if (ST.tick) setInterval(ST.tick, 2000);
