@@ -74,6 +74,7 @@
       border-radius: var(--r-lg);
       cursor: default;
     }
+
     .tribe-context-bar:hover {
       transform: none;
       box-shadow: var(--shadow);
@@ -110,9 +111,23 @@
       letter-spacing: .05em;
     }
 
-    .cds-pill.amber { background: rgba(217, 119, 6, 0.08); color: var(--amber); border: 1px solid rgba(217, 119, 6, 0.2); }
-    .cds-pill.cobalt { background: var(--cobalt-l); color: var(--cobalt); border: 1px solid rgba(37, 99, 235, 0.2); }
-    .cds-pill.emerald { background: var(--emerald-l); color: var(--emerald); border: 1px solid rgba(5, 150, 105, 0.2); }
+    .cds-pill.amber {
+      background: rgba(217, 119, 6, 0.08);
+      color: var(--amber);
+      border: 1px solid rgba(217, 119, 6, 0.2);
+    }
+
+    .cds-pill.cobalt {
+      background: var(--cobalt-l);
+      color: var(--cobalt);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
+    .cds-pill.emerald {
+      background: var(--emerald-l);
+      color: var(--emerald);
+      border: 1px solid rgba(5, 150, 105, 0.2);
+    }
 
     .tcb-rec {
       font-size: 12px;
@@ -547,8 +562,15 @@
     }
 
     @keyframes fabPulse {
-      0% { transform: scale(1); opacity: 0.4; }
-      100% { transform: scale(1.4); opacity: 0; }
+      0% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+
+      100% {
+        transform: scale(1.4);
+        opacity: 0;
+      }
     }
 
     .fab-tooltip {
@@ -595,30 +617,35 @@
 </head>
 
 <body data-page="dashboard">
-<div id="auth-overlay" style="position:fixed;inset:0;background:#050D1F;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:99999;">
-  <div style="font-family:'Inter',sans-serif;text-align:center;">
-    <div style="font-size:32px;font-weight:900;color:white;margin-bottom:8px;">Study<span style="color:#2563EB;">Twin</span></div>
-    <div style="font-size:14px;color:#6B7280;margin-bottom:40px;">Sign in to start your session</div>
-    <button id="google-signin-btn" style="background:#2563EB;color:white;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;">Sign in with Google</button>
-    <div id="auth-error" style="color:#EF4444;font-size:13px;margin-top:16px;display:none;"></div>
+  <div id="auth-overlay"
+    style="position:fixed;inset:0;background:#050D1F;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:99999;">
+    <div style="font-family:'Inter',sans-serif;text-align:center;">
+      <div style="font-size:32px;font-weight:900;color:white;margin-bottom:8px;">Study<span
+          style="color:#2563EB;">Twin</span></div>
+      <div style="font-size:14px;color:#6B7280;margin-bottom:40px;">Sign in to start your session</div>
+      <button id="google-signin-btn"
+        style="background:#2563EB;color:white;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;">Sign
+        in with Google</button>
+      <div id="auth-error" style="color:#EF4444;font-size:13px;margin-top:16px;display:none;"></div>
+    </div>
   </div>
-</div>
 
-<script>
-window.addEventListener('load', function() {
-  var btn = document.getElementById('google-signin-btn');
-  if (btn) {
-    btn.addEventListener('click', function() {
-      var provider = new window.firebase.auth.GoogleAuthProvider();
-      window.firebase.auth().signInWithPopup(provider).catch(function(err) {
-        var errEl = document.getElementById('auth-error');
-        if (errEl) { errEl.textContent = 'Sign-in failed: ' + err.message; errEl.style.display = 'block'; }
-      });
+  <script>
+    window.addEventListener('load', function () {
+      var btn = document.getElementById('google-signin-btn');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var provider = new window.firebase.auth.GoogleAuthProvider();
+          window.firebase.auth().signInWithPopup(provider).catch(function (err) {
+            var errEl = document.getElementById('auth-error');
+            if (errEl) { errEl.textContent = 'Sign-in failed: ' + err.message; errEl.style.display = 'block'; }
+          });
+        });
+      }
     });
-  }
-});
-</script>
-  <canvas id="fluid-canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
+  </script>
+  <canvas id="fluid-canvas"
+    style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
   <div id="_nav"></div>
   <div class="page">
     <div class="dash">
@@ -646,6 +673,29 @@ window.addEventListener('load', function() {
               <div class="pulse"></div>Connected · Simulation
             </div>
           </div>
+          <div class="sb-sep"></div>
+          <div>
+            <div class="sb-label">Blink Tracking</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+              <div id="blink-face-dot" style="
+                width:8px; height:8px; border-radius:50%;
+                background:var(--ink4);
+                transition:background 0.4s;
+                flex-shrink:0;
+              " title="Face tracking status"></div>
+              <span id="camera-status-pill" style="font-size:12px;font-weight:600;color:var(--ink4);">
+                📷 Loading…
+              </span>
+            </div>
+          </div>
+          <div class="sb-sep"></div>
+          <div>
+            <div class="sb-label">TRIBE Mode</div>
+            <div id="tribe-mode-badge" style="font-family:var(--ff-mono);font-size:11px;font-weight:700;
+                        color:var(--amber);margin-top:3px;">
+              default
+            </div>
+          </div>
         </div>
         <div class="session-timer" id="d-timer">00:00</div>
       </div>
@@ -660,6 +710,18 @@ window.addEventListener('load', function() {
             <span class="cds-pill emerald" id="t-vis">Visual 34</span>
           </div>
           <div class="tcb-rec" id="t-rec">Recommended session: 19 min</div>
+          <div id="tribe-analysis-badge" style="
+            display:flex; align-items:center; gap:6px;
+            padding:4px 12px; border-radius:100px;
+            background:rgba(217,119,6,0.08);
+            border:1px solid rgba(217,119,6,0.2);
+            font-family:var(--ff-mono); font-size:10px; font-weight:700;
+            color:var(--amber);
+            display:none; /* shown after Firebase load */
+          ">
+            <div style="width:5px;height:5px;border-radius:50%;background:var(--amber);"></div>
+            <span id="tribe-analysis-mode">TRIBE Ready</span>
+          </div>
         </div>
         <a href="brain-map.html" class="btn-ghost" style="padding: 6px 14px; font-size: 11px;">Change material</a>
       </div>
@@ -749,7 +811,30 @@ window.addEventListener('load', function() {
                 </div>
               </div>
               <div class="pomo-status" id="pomo-status">Session running at standard duration</div>
-              <p style="font-size: 10px; color: var(--ink4); font-style: italic; margin-top: -8px;">Duration set by TRIBE v2 based on material difficulty.</p>
+              <p style="font-size: 10px; color: var(--ink4); font-style: italic; margin-top: -8px;">Duration set by
+                TRIBE v2 based on material difficulty.</p>
+              <!-- Blink EAR Calibration Progress -->
+              <div id="blink-calib-block" style="
+                width:100%;
+                border-top:1px solid var(--border);
+                padding-top:14px;
+                margin-top:6px;
+              ">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <div class="data-label" style="font-size:9px;">Blink EAR Calibration</div>
+                  <div id="blink-ear-debug" style="font-family:var(--ff-mono);font-size:9px;color:var(--ink4);">
+                    EAR: — | Thresh: —
+                  </div>
+                </div>
+                <div style="width:100%;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;">
+                  <div id="calib-blink-bar"
+                    style="height:100%;width:0%;background:var(--cobalt);border-radius:2px;transition:width 0.5s ease;">
+                  </div>
+                </div>
+                <div id="calib-blink-label" style="font-size:10px;color:var(--ink4);margin-top:4px;text-align:center;">
+                  Blink calibration starts with session
+                </div>
+              </div>
               <div class="pomo-log">
                 <div class="log-label">Adaptations</div>
                 <div id="pomo-log-entries">
@@ -863,7 +948,8 @@ window.addEventListener('load', function() {
               </div>
               <div class="insight">
                 <div class="insight-tag" style="color: var(--amber);">TRIBE v2 Alert</div>
-                <div class="insight-text" id="ins-tribe">All brain circuits operating within normal parameters for this material.</div>
+                <div class="insight-text" id="ins-tribe">All brain circuits operating within normal parameters for this
+                  material.</div>
               </div>
             </div>
           </div>
@@ -899,7 +985,9 @@ window.addEventListener('load', function() {
                   <td>Yesterday</td>
                   <td class="hist-val">44</td>
                   <td>1h 42m</td>
-                  <td><span class="region-pill" style="color: var(--cobalt); border-color: rgba(37,99,235,0.2); background: var(--cobalt-l);">Language</span></td>
+                  <td><span class="region-pill"
+                      style="color: var(--cobalt); border-color: rgba(37,99,235,0.2); background: var(--cobalt-l);">Language</span>
+                  </td>
                 </tr>
                 <tr>
                   <td>Monday</td>
@@ -917,7 +1005,9 @@ window.addEventListener('load', function() {
                   <td>Saturday</td>
                   <td class="hist-val">61</td>
                   <td>0h 55m</td>
-                  <td><span class="region-pill" style="color: var(--cobalt); border-color: rgba(37,99,235,0.2); background: var(--cobalt-l);">Language</span></td>
+                  <td><span class="region-pill"
+                      style="color: var(--cobalt); border-color: rgba(37,99,235,0.2); background: var(--cobalt-l);">Language</span>
+                  </td>
                 </tr>
                 <tr>
                   <td>Friday</td>
@@ -972,7 +1062,11 @@ window.addEventListener('load', function() {
 
   <!-- FAB -->
   <a href="brain-map.html" class="fab">
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.48ZM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.48Z"/></svg>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path
+        d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.48ZM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.48Z" />
+    </svg>
     <div class="fab-tooltip">Brain Intelligence</div>
   </a>
 
@@ -987,6 +1081,12 @@ window.addEventListener('load', function() {
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js"
+    crossorigin="anonymous"></script>
+  <script src="blink-detection.js"></script>
   <script src="app.js"></script>
   <script>
     // Aura Background
@@ -1056,7 +1156,7 @@ window.addEventListener('load', function() {
     function setInsights(s) {
       const pool = INSIGHTS[s] || INSIGHTS.focused
         ;[1, 2, 3].forEach((n, i) => { const e = document.getElementById('ins-' + n); if (e) e.textContent = pool[i] })
-      
+
       const tribeIns = document.getElementById('ins-tribe')
       if (tribeIns) {
         if (s === 'elevated' || s === 'overloaded') {
@@ -1146,13 +1246,13 @@ window.addEventListener('load', function() {
         }
         document.getElementById('pomo-status').textContent = msgs[d.state] || ''
         document.getElementById('pomo-arc').style.stroke = d.state === 'overloaded' ? '#EF4444' : sc
-        
+
         // Adaptive timer
         if (d.state === 'overloaded') { pomoTotal = 15 * 60; pomoElapsed = Math.max(0, pomoTotal - 90); pomoPhase = 'break'; document.getElementById('pomo-phase').textContent = 'Break' }
         else if (d.state === 'elevated') pomoTotal = 21 * 60
         else if (d.state === 'calm') pomoTotal = 30 * 60
         else pomoTotal = TRIBE.get().recommended_duration * 60
-        
+
         // Log entry
         const log = document.getElementById('pomo-log-entries')
         const noEntry = log.querySelector('p')
@@ -1179,7 +1279,90 @@ window.addEventListener('load', function() {
       set('t-lang', 'Language ' + data.language)
       set('t-vis', 'Visual ' + data.visual)
       set('t-rec', 'Recommended session: ' + data.recommended_duration + ' min')
+
+      // ── Wire TRIBE mode badge ───────────────────────────────────────────────────
+      const modeEl = document.getElementById('tribe-mode-badge')
+      if (modeEl) {
+        const modeMap = {
+          'default': 'Default',
+          'lite_nlp': 'LITE NLP ✓',
+          'full_v2': 'TRIBE v2 ✓'
+        }
+        modeEl.textContent = modeMap[data.tribe_mode] || data.tribe_mode || 'Default'
+        modeEl.style.color = data.tribe_mode === 'full_v2' ? '#059669' :
+          data.tribe_mode === 'lite_nlp' ? 'var(--cobalt)' : 'var(--ink4)'
+      }
+
+      // Show the analysis badge if we have real data
+      const badgeEl = document.getElementById('tribe-analysis-badge')
+      const modeTextEl = document.getElementById('tribe-analysis-mode')
+      if (badgeEl && data.tribe_mode && data.tribe_mode !== 'default') {
+        badgeEl.style.display = 'flex'
+        if (modeTextEl) {
+          modeTextEl.textContent = data.tribe_mode === 'full_v2' ? 'TRIBE v2 Active' : 'LITE Mode Active'
+        }
+      }
+
+      // Update recommended session duration from TRIBE
+      if (data.recommended_duration > 0) {
+        const pomoTotal_tribe = data.recommended_duration * 60
+        // Update pomo label
+        const statusEl = document.getElementById('pomo-status')
+        if (statusEl && statusEl.textContent.includes('standard')) {
+          statusEl.textContent = `Session duration: ${data.recommended_duration} min (TRIBE-personalised)`
+        }
+        console.log(`[StudyTwin] TRIBE session params loaded: ${data.recommended_duration}min duration, threshold=${data.recommended_threshold}`)
+      }
     })
+
+    // ── Start BlinkDetector + trigger calibration with session ─────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      // BlinkDetector auto-starts 2s after page load (via app.js Patch E)
+      // Here we hook into calibration events for UI feedback
+
+      document.addEventListener('blinkCalibrationComplete', (e) => {
+        const { threshold } = e.detail
+        console.log(`[StudyTwin] Blink calibration complete — EAR threshold: ${threshold.toFixed(4)}`)
+
+        // Hide calib block after success
+        const calibBlock = document.getElementById('blink-calib-block')
+        if (calibBlock) {
+          setTimeout(() => {
+            calibBlock.style.opacity = '0'
+            calibBlock.style.transition = 'opacity 1s'
+            setTimeout(() => { calibBlock.style.display = 'none' }, 1000)
+          }, 2000)
+        }
+      })
+    })
+
+    // ── Camera status pill auto-update ────────────────────────────────────────
+    setTimeout(() => {
+      const pill = document.getElementById('camera-status-pill')
+      if (!pill) return
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        pill.textContent = '📷 Not supported'
+        pill.style.color = 'var(--red)'
+        return
+      }
+
+      // Check permission state without prompting
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: 'camera' }).then(perm => {
+          if (perm.state === 'denied') {
+            pill.textContent = '📷 Blocked'
+            pill.style.color = 'var(--red)'
+          } else if (perm.state === 'granted') {
+            pill.textContent = '📷 Ready'
+            pill.style.color = 'var(--cobalt)'
+          } else {
+            pill.textContent = '📷 Will request'
+            pill.style.color = 'var(--ink4)'
+          }
+        }).catch(() => { })
+      }
+    }, 500)
   </script>
 
 </body>

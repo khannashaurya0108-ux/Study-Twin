@@ -81,7 +81,7 @@ function connectFirebase() {
     const db = window.firebase.database();
 
     // Google Sign-In function — called by the button in dashboard.html
-    window.signInWithGoogle = function() {
+    window.signInWithGoogle = function () {
       const provider = new window.firebase.auth.GoogleAuthProvider();
       auth.signInWithPopup(provider).catch(err => {
         const errEl = document.getElementById('auth-error');
@@ -96,6 +96,40 @@ function connectFirebase() {
         // User is signed in — hide overlay and start live data
         if (overlay) overlay.style.display = 'none';
         const uid = user.uid;
+
+        // ── Expose UID globally (needed by blink-detection.js + tribe) ──────────
+        window.CURRENT_UID = uid;
+
+        // ── Load TRIBE metadata from Firebase (written by Kaggle notebook) ──────
+        db.ref('/sessions/' + uid + '/metadata').once('value', (snap) => {
+          const meta = snap.val();
+          if (meta && (meta.cds_executive !== undefined)) {
+            TRIBE.updateFromFirebase(meta);
+          } else {
+            console.log('[StudyTwin] No Kaggle CDS data in Firebase — using defaults');
+            console.log('  → Run the Kaggle notebook to get real TRIBE scores');
+          }
+        });
+
+        // ── Also listen for real-time updates (if Kaggle runs during session) ───
+        db.ref('/sessions/' + uid + '/metadata').on('value', (snap) => {
+          const meta = snap.val();
+          if (meta && meta.cds_executive !== undefined && meta.tribe_mode !== 'default') {
+            TRIBE.updateFromFirebase(meta);
+          }
+        });
+
+        // ── Read blink score written back from blink-detection.js ───────────────
+        // (For future ESP32 integration — ESP32 can read this via Firebase)
+        // This also helps sync if multiple browser tabs are open
+        db.ref('/sessions/' + uid + '/live/blink_score').on('value', (snap) => {
+          const val = snap.val();
+          if (val !== null && window.BlinkDetector && !window.BlinkDetector.hasCam()) {
+            // Only use Firebase blink if we don't have local camera
+            // (avoids feedback loops when camera IS running)
+          }
+        });
+
         const liveRef = db.ref('/sessions/' + uid + '/live');
         liveRef.on('value', (snapshot) => {
           const data = snapshot.val();
@@ -121,7 +155,7 @@ function connectFirebase() {
         // User is signed out — show overlay, stop simulation
         if (overlay) overlay.style.display = 'flex';
         // Clear any running simulation intervals
-        const highestId = setInterval(() => {}, 0);
+        const highestId = setInterval(() => { }, 0);
         for (let i = 0; i < highestId; i++) clearInterval(i);
       }
     });
@@ -156,8 +190,23 @@ const ST = (() => {
     const gsrS = Math.min(100, (gsr / 82) * 100)
     const hrvS = Math.max(0, 100 - ((hrv - 18) / 70) * 100)
     const blS = bl < 10 ? 82 : Math.max(0, 100 - (bl / 24) * 62)
-    // IEEE §V weighted fusion
-    const raw = gsrS * 0.50 + hrvS * 0.35 + blS * 0.15
+    // ── Blink sub-score ─────────────────────────────────────────────────────
+    // Use REAL MediaPipe score when available, else simulate
+    const blinkScoreReal = (
+      window.BlinkDetector &&
+      window.BlinkDetector.ready() &&
+      window.BlinkDetector.hasCam()
+    ) ? window.BlinkDetector.getScore() : blS
+
+    // Also use real blink rate if available
+    const blinkRateReal = (
+      window.BlinkDetector &&
+      window.BlinkDetector.ready() &&
+      window.BlinkDetector.hasCam()
+    ) ? window.BlinkDetector.getRate() : Math.round(bl * 10) / 10
+
+    // IEEE §V weighted fusion: CLI = GSR(0.50) + HRV(0.35) + Blink(0.15)
+    const raw = gsrS * 0.50 + hrvS * 0.35 + blinkScoreReal * 0.15
     // EMA smoothing
     const cli = Math.round(_d.cli * (1 - ALPHA) + raw * ALPHA)
     _d = {
@@ -166,7 +215,7 @@ const ST = (() => {
       spo2: Math.round(wander(_d.spo2, 95, 100, .2) * 10) / 10,
       gsrRaw: Math.round(1800 + gsr * 14),
       gsrDev: Math.round(gsr * 10) / 10,
-      blink: Math.round(bl * 10) / 10,
+      blink: blinkRateReal,
       battery: Math.round(wander(_d.battery, 3400, 4180, 3)),
       sessionS: Math.floor((Date.now() - _t0) / 1000),
       accuracy: '83.4%', latency: '47ms'
@@ -196,6 +245,9 @@ const ST = (() => {
     fmtTime(s) { return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` }
   }
 })()
+
+// ── CURRENT UID (Phase 5: Blink Detection + TRIBE) ────────────
+window.CURRENT_UID = null;  // set by connectFirebase() after login
 
 // ── NAV + FOOTER ────────────────────────────────────────────
 const NAV_LINKS = [
@@ -309,8 +361,8 @@ function initAntigravityBrain(THREE, canvas) {
   if (!THREE || !canvas) return null
 
   const scene = new THREE.Scene()
-  const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth/canvas.clientHeight, 0.1, 1000)
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true })
+  const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000)
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
 
   // STABILITY FIX
@@ -342,7 +394,7 @@ function initAntigravityBrain(THREE, canvas) {
     const a = 1.0, b = 0.8, c = 1.05
     const theta = Math.random() * Math.PI * 2
     const phi = Math.acos(2 * Math.random() - 1)
-    
+
     // The Folds (Sulci) via Sinewave displacement
     let r = 1.8
     r += Math.sin(phi * 10) * Math.cos(theta * 10) * 0.15
@@ -361,9 +413,9 @@ function initAntigravityBrain(THREE, canvas) {
     // Distribute left and right evenly
     const side = i % 2 === 0 ? 1 : -1
     const pt = generateBrainPoint(side)
-    nodePositions[i*3] = pt.x
-    nodePositions[i*3+1] = pt.y
-    nodePositions[i*3+2] = pt.z
+    nodePositions[i * 3] = pt.x
+    nodePositions[i * 3 + 1] = pt.y
+    nodePositions[i * 3 + 2] = pt.z
     nodeVecs.push(pt)
   }
 
@@ -374,7 +426,7 @@ function initAntigravityBrain(THREE, canvas) {
     sizeAttenuation: true, map: sparkGeoTexture,
     depthWrite: false, blending: THREE.AdditiveBlending
   })
-  
+
   const brainGroup = new THREE.Group()
   const points = new THREE.Points(nodeGeo, nodeMat)
   brainGroup.add(points)
@@ -387,7 +439,7 @@ function initAntigravityBrain(THREE, canvas) {
       const dx = nodeVecs[i].x - nodeVecs[j].x
       const dy = nodeVecs[i].y - nodeVecs[j].y
       const dz = nodeVecs[i].z - nodeVecs[j].z
-      if (dx*dx + dy*dy + dz*dz < SYN_DIST*SYN_DIST) {
+      if (dx * dx + dy * dy + dz * dz < SYN_DIST * SYN_DIST) {
         linePts.push(
           nodeVecs[i].x, nodeVecs[i].y, nodeVecs[i].z,
           nodeVecs[j].x, nodeVecs[j].y, nodeVecs[j].z
@@ -403,7 +455,7 @@ function initAntigravityBrain(THREE, canvas) {
   })
   const lines = new THREE.LineSegments(lineGeo, lineMat)
   brainGroup.add(lines)
-  
+
   scene.add(brainGroup)
 
   // ── MOUSE PARALLAX ──
@@ -486,6 +538,22 @@ document.addEventListener('DOMContentLoaded', () => {
   initScrollReveal()
   document.querySelector('.page')?.classList.add('page-in')
 
+  // ── Phase 3: Start MediaPipe Blink Detection ─────────────────────────────
+  // BlinkDetector is defined in blink-detection.js (must be loaded BEFORE app.js)
+  if (window.BlinkDetector) {
+    // Auto-start on dashboard page only
+    if (document.body.dataset.page === 'dashboard') {
+      setTimeout(async () => {
+        const started = await BlinkDetector.start();
+        if (started) {
+          console.log('[StudyTwin] BlinkDetector started — camera active');
+        } else {
+          console.log('[StudyTwin] BlinkDetector fallback — no camera');
+        }
+      }, 2000);  // 2s delay to let page fully render first
+    }
+  }
+
   // 2. Magnetic UI Elements & 4. GSAP ScrollTriggers
   if (typeof gsap !== 'undefined') {
     const magnetics = document.querySelectorAll('.btn-primary, .card')
@@ -522,38 +590,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── 4. TRIBE ENGINE (Cognitive Domain Analysis) ──────────────
 const TRIBE = (() => {
-  // Static session CDS scores — will later be replaced by Firebase reads
-  // For now these are hardcoded demo values representing a difficult lecture
+  // Default values (used before Kaggle analysis or as fallback)
   let _cds = {
-    executive: 82,    // prefrontal cortex load 0-100
-    language: 67,     // temporal-parietal load 0-100
-    visual: 34,       // occipital load 0-100
+    executive: 82,
+    language: 67,
+    visual: 34,
     material: 'Advanced Signals & Systems — Lecture 14',
     analysed: true,
-    recommended_duration: 0,  // computed from CDS
-    recommended_threshold: 0  // computed from CDS
+    recommended_duration: 0,
+    recommended_threshold: 0,
+    dominant_region: 'Executive',
+    routing_recommendation: '',
+    tribe_mode: 'default',    // 'default' | 'lite_nlp' | 'full_v2'
+    analysed_at: null
   }
 
-  // Compute recommended session parameters from CDS scores
   function computeParams() {
-    // High executive load = shorter session, lower overload threshold
-    const exec = _cds.executive
-    _cds.recommended_duration = Math.round(32 - (exec / 100) * 16)  // 16-32 min range
-    _cds.recommended_threshold = Math.round(80 - (exec / 100) * 22) // 58-80 range
+    const exec = _cds.cds_executive || _cds.executive  // handle both key names
+    _cds.recommended_duration = Math.round(32 - (exec / 100) * 16)   // 16-32 min
+    _cds.recommended_threshold = Math.round(80 - (exec / 100) * 22)   // 58-80
   }
   computeParams()
 
-  // Regional routing logic — which brain circuit is most loaded
   function getDominantRegion() {
     const regions = [
-      { name: 'Executive', score: _cds.executive, recommendation: 'Switch to visual review material — diagrams, flowcharts, or video summaries. Your prefrontal cortex needs reduced working memory demand.' },
-      { name: 'Language', score: _cds.language, recommendation: 'Switch to numerical or visual content — equations, graphs, or problem sets. Reduce dense reading.' },
-      { name: 'Visual', score: _cds.visual, recommendation: 'Switch to audio or text-light reading. Reduce diagram and animation-heavy material.' }
+      {
+        name: 'Executive',
+        score: _cds.cds_executive || _cds.executive,
+        recommendation: _cds.routing_recommendation ||
+          'Switch to visual review material — diagrams, flowcharts, or video summaries. Your prefrontal cortex needs reduced working memory demand.'
+      },
+      {
+        name: 'Language',
+        score: _cds.cds_language || _cds.language,
+        recommendation: 'Switch to numerical or visual content — equations, graphs, or problem sets. Reduce dense reading.'
+      },
+      {
+        name: 'Visual',
+        score: _cds.cds_visual || _cds.visual,
+        recommendation: 'Switch to audio or text-light reading. Reduce diagram and animation-heavy material.'
+      }
     ]
     return regions.sort((a, b) => b.score - a.score)[0]
   }
 
-  // Regional load interpretation
   function interpretScore(score) {
     if (score < 30) return { label: 'Low', color: '#059669', description: 'Well within capacity' }
     if (score < 60) return { label: 'Moderate', color: '#2563EB', description: 'Normal working range' }
@@ -561,13 +641,43 @@ const TRIBE = (() => {
     return { label: 'Critical', color: '#DC2626', description: 'Near maximum capacity' }
   }
 
+  // ── NEW: Update from Firebase data (called after Kaggle runs) ──────────
+  function updateFromFirebase(meta) {
+    if (!meta) return
+
+    // Normalize field names (Kaggle uses cds_* prefix)
+    _cds = {
+      ..._cds,
+      ...meta,
+      // Map cds_* to plain names for backward compat
+      executive: meta.cds_executive ?? _cds.executive,
+      language: meta.cds_language ?? _cds.language,
+      visual: meta.cds_visual ?? _cds.visual,
+      analysed: true
+    }
+    computeParams()
+
+    console.log(`[StudyTwin TRIBE] Loaded from Firebase (mode=${meta.tribe_mode || 'unknown'}):`,
+      `Exec=${_cds.executive} Lang=${_cds.language} Vis=${_cds.visual}`,
+      `Duration=${_cds.recommended_duration}min Threshold=${_cds.recommended_threshold}`)
+
+    // Broadcast to all TRIBE subscribers
+    _subs.forEach(fn => fn({ ..._cds }))
+  }
+
+  let _subs = []
+
   return {
     get() { return { ..._cds } },
     getDominantRegion,
     interpretScore,
-    // Subscriber pattern matching ST
-    _subs: [],
-    subscribe(fn) { this._subs.push(fn); fn({ ..._cds }); return () => { this._subs = this._subs.filter(s => s !== fn) } }
+    updateFromFirebase,
+    _subs,
+    subscribe(fn) {
+      _subs.push(fn)
+      fn({ ..._cds })
+      return () => { _subs = _subs.filter(s => s !== fn) }
+    }
   }
 })()
 
