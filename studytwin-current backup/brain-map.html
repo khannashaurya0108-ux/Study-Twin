@@ -372,6 +372,7 @@
 
       <div class="upload-card">
         <div class="drop-zone" id="drop-zone">
+          <input type="file" id="file-input" accept=".pdf,.txt" style="display:none">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           <p style="font-weight: 600;">Drop PDF, URL or Text</p>
           <p style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Max 50MB · IEEE Format Supported</p>
@@ -671,24 +672,39 @@
     const btnText = document.getElementById('btn-text')
     const statusText = document.getElementById('status-text')
 
-analyseBtn.addEventListener('click', async () => {
+    const dropZone = document.getElementById('drop-zone')
+    const fileInput = document.getElementById('file-input')
+
+    dropZone.addEventListener('click', () => {
+      fileInput.click()
+    })
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files[0]) {
+        const pTags = dropZone.getElementsByTagName('p')
+        if (pTags.length > 0) {
+          pTags[0].textContent = fileInput.files[0].name
+        }
+      }
+    })
+
+    analyseBtn.addEventListener('click', async () => {
       analyseBtn.disabled = true
       btnText.innerHTML = '<div class="loading-spinner"></div>'
       statusText.textContent = 'Sending to TRIBE analysis engine...'
 
       const uid = window.firebase?.auth().currentUser?.uid
       if (!uid) { 
-        statusText.textContent = 'Not signed in.'
+        statusText.textContent = 'Please sign in first.'
         analyseBtn.disabled = false
         return 
       }
 
       const formData = new FormData()
-      const fileInput = document.getElementById('file-input')
       if (fileInput?.files[0]) { 
         formData.append('file', fileInput.files[0]) 
       } else { 
-        formData.append('text', document.getElementById('text-input')?.value || '') 
+        formData.append('text', document.getElementById('text-input')?.value || 'sample study material for analysis') 
       }
       formData.append('uid', uid)
 
@@ -699,10 +715,11 @@ analyseBtn.addEventListener('click', async () => {
         })
         const data = await res.json()
         btnText.textContent = 'Analysis Submitted'
-        statusText.innerHTML = 'TRIBE is processing. Results will appear in 2-3 minutes. <span style="color:#4ade80">&#10003;</span>'
+        statusText.innerHTML = 'TRIBE is processing. Results appear in 2-3 minutes. <span style="color:#4ade80">✓</span>'
+        analyseBtn.disabled = false
       } catch (err) {
         btnText.textContent = 'Analyse Material'
-        statusText.textContent = 'Server error. Retry or check connection.'
+        statusText.textContent = 'Server error. Check connection and retry.'
         analyseBtn.disabled = false
       }
     })
