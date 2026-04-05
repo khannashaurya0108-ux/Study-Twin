@@ -671,30 +671,40 @@
     const btnText = document.getElementById('btn-text')
     const statusText = document.getElementById('status-text')
 
-    analyseBtn.addEventListener('click', () => {
+analyseBtn.addEventListener('click', async () => {
       analyseBtn.disabled = true
       btnText.innerHTML = '<div class="loading-spinner"></div>'
-      statusText.textContent = 'Analysing cortical demand...'
-      
-      setTimeout(() => {
+      statusText.textContent = 'Sending to TRIBE analysis engine...'
+
+      const uid = window.firebase?.auth().currentUser?.uid
+      if (!uid) { 
+        statusText.textContent = 'Not signed in.'
         analyseBtn.disabled = false
+        return 
+      }
+
+      const formData = new FormData()
+      const fileInput = document.getElementById('file-input')
+      if (fileInput?.files[0]) { 
+        formData.append('file', fileInput.files[0]) 
+      } else { 
+        formData.append('text', document.getElementById('text-input')?.value || '') 
+      }
+      formData.append('uid', uid)
+
+      try {
+        const res = await fetch('https://study-twin.onrender.com/api/analyse', { 
+          method: 'POST', 
+          body: formData 
+        })
+        const data = await res.json()
+        btnText.textContent = 'Analysis Submitted'
+        statusText.innerHTML = 'TRIBE is processing. Results will appear in 2-3 minutes. <span style="color:#4ade80">&#10003;</span>'
+      } catch (err) {
         btnText.textContent = 'Analyse Material'
-        statusText.innerHTML = 'Analysis complete <span style="color:#4ade80; margin-left:5px;">✓</span>'
-        
-        // Update TRIBE values (Simulation)
-        // In a real app, this would be a fetch call
-        const newScores = {
-          executive: 82,
-          language: 67,
-          visual: 34,
-          material: "Advanced Signals & Systems — L14.pdf",
-          recommended_duration: 19
-        }
-        // We simulate the update by calling our subscribe logic or just updating DOM
-        // Since TRIBE is a singleton in app.js, we'd ideally have a TRIBE.update()
-        // For now, we'll just trigger the UI update manually
-        updateUI(newScores)
-      }, 2000)
+        statusText.textContent = 'Server error. Retry or check connection.'
+        analyseBtn.disabled = false
+      }
     })
 
     function updateUI(data) {
