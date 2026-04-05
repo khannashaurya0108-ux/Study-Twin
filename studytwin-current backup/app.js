@@ -89,52 +89,32 @@ function connectFirebase() {
       });
     };
 
-    // Watch auth state — show/hide overlay, wire Firebase paths to UID
     auth.onAuthStateChanged(user => {
       const overlay = document.getElementById('auth-overlay');
+
       if (user) {
-        // User is signed in — hide overlay and start live data
+        // Confirmed logged in — hide overlay if it was shown
         if (overlay) overlay.style.display = 'none';
-        const uid = user.uid;
+        window.CURRENT_UID = user.uid;
 
-        // ── Expose UID globally (needed by blink-detection.js + tribe) ──────────
-        window.CURRENT_UID = uid;
-
-        // ── Load TRIBE metadata from Firebase (written by Kaggle notebook) ──────
-        db.ref('/sessions/' + uid + '/metadata').once('value', (snap) => {
+        db.ref('/sessions/' + user.uid + '/metadata').once('value', (snap) => {
           const meta = snap.val();
-          if (meta && (meta.cds_executive !== undefined)) {
-            TRIBE.updateFromFirebase(meta);
-          } else {
-            console.log('[StudyTwin] No Kaggle CDS data in Firebase — using defaults');
-            console.log('  → Run the Kaggle notebook to get real TRIBE scores');
-          }
-        });
-
-        // ── Also listen for real-time updates (if Kaggle runs during session) ───
-        db.ref('/sessions/' + uid + '/metadata').on('value', (snap) => {
-          const meta = snap.val();
-          if (meta && meta.cds_executive !== undefined && meta.tribe_mode !== 'default') {
+          if (meta && meta.cds_executive !== undefined) {
             TRIBE.updateFromFirebase(meta);
           }
         });
 
-        // ── Read blink score written back from blink-detection.js ───────────────
-        // (For future ESP32 integration — ESP32 can read this via Firebase)
-        // This also helps sync if multiple browser tabs are open
-        db.ref('/sessions/' + uid + '/live/blink_score').on('value', (snap) => {
-          const val = snap.val();
-          if (val !== null && window.BlinkDetector && !window.BlinkDetector.hasCam()) {
-            // Only use Firebase blink if we don't have local camera
-            // (avoids feedback loops when camera IS running)
+        db.ref('/sessions/' + user.uid + '/metadata').on('value', (snap) => {
+          const meta = snap.val();
+          if (meta && meta.tribe_mode && meta.tribe_mode !== 'default') {
+            TRIBE.updateFromFirebase(meta);
           }
         });
 
-        const liveRef = db.ref('/sessions/' + uid + '/live');
-        liveRef.on('value', (snapshot) => {
+        db.ref('/sessions/' + user.uid + '/live').on('value', (snapshot) => {
           const data = snapshot.val();
-          if (data) {
-            const transformed = {
+          if (data && ST._subs) {
+            ST._subs.forEach(fn => fn({
               ...ST.get(),
               gsrRaw: data.gsr_raw,
               gsrDev: data.gsr_z * 100,
@@ -142,21 +122,13 @@ function connectFirebase() {
               cli: data.cli_score,
               state: data.cli_state,
               battery: data.battery
-            };
-            if (ST._subs) {
-              ST._subs.forEach(fn => fn(transformed));
-            }
+            }));
           }
-        }, (error) => {
-          console.warn('Firebase connection error, falling back to simulation:', error);
-          if (ST.tick) setInterval(ST.tick, 2000);
         });
+
       } else {
-        // User is signed out — show overlay, stop simulation
+        // Confirmed NOT logged in — only now show the overlay
         if (overlay) overlay.style.display = 'flex';
-        // Clear any running simulation intervals
-        const highestId = setInterval(() => { }, 0);
-        for (let i = 0; i < highestId; i++) clearInterval(i);
       }
     });
 
