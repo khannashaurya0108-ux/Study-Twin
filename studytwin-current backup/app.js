@@ -8,6 +8,12 @@
 // Weighted fusion: CLI = (GSR × 0.50) + (HRV × 0.35) + (Blink × 0.15)
 // EMA α = 0.28, mirrors ESP32 firmware
 // UI is NEVER blank — hardcoded initial data from the paper.
+
+
+
+const SERVER_URL = 'https://studytwin-server.onrender.com'; // your Render URL
+// For local testing use: 'http://localhost:3001' 
+
 const ST_Engine = {
   cbs: [],
   add(fn) { this.cbs.push(fn) },
