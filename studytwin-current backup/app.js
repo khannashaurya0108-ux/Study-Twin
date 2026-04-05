@@ -11,7 +11,7 @@
 
 
 
-const SERVER_URL = 'https://studytwin-server.onrender.com'; // your Render URL
+const SERVER_URL = 'https://study-twin.onrender.com'; // your Render URL
 // For local testing use: 'http://localhost:3001' 
 
 const ST_Engine = {
