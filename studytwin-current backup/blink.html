@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>StudyTwin — Blink Monitor</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Page-Specific Styles */
+    .hero {
+      margin-bottom: 64px;
+      padding: 100px 0 20px;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--ff);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cobalt);
+      background: var(--cobalt-l);
+      border: 1px solid rgba(37, 99, 235, .18);
+      border-radius: 100px;
+      padding: 7px 16px;
+      letter-spacing: .08em;
+      margin-bottom: 24px;
+    }
+
+    .pulse-cam {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      display: inline-block;
+      margin-right: 4px;
+      animation: pulse-red 2s infinite;
+    }
+
+    @keyframes pulse-red {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4)
+      }
+
+      60% {
+        box-shadow: 0 0 0 6px rgba(220, 38, 38, 0)
+      }
+    }
+
+    .instr-card {
+      margin-bottom: 64px;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+
+    .step-num {
+      font-family: var(--ff-mono);
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--border2);
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+    }
+
+    .cam-container {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 48px;
+      margin-bottom: 64px;
+      align-items: start;
+    }
+
+    .cam-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      position: relative;
+      box-shadow: var(--shadow);
+      aspect-ratio: 4/3;
+      transition: border-color .3s, box-shadow .3s;
+    }
+
+    .cam-box.active {
+      border-color: var(--cobalt);
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.15);
+    }
+
+    #cam-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .cam-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+      padding: 30px 24px 20px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .cam-ph {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg3);
+    }
+
+    .stats-box {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chart-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 40px;
+      box-shadow: var(--shadow);
+      margin-bottom: 64px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 220px;
+      margin-top: 32px;
+    }
+
+    .auth-bar {
+      background: rgba(217, 119, 6, 0.08);
+      border: 1px solid rgba(217, 119, 6, 0.22);
+      border-radius: var(--r-sm);
+      padding: 14px 24px;
+      margin-bottom: 32px;
+      color: var(--amber);
+      font-weight: 500;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .auth-bar a {
+      color: var(--amber);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .num-grid {
+      margin-bottom: 80px;
+    }
+
+    .num-cell {
+      padding: 40px;
+    }
+
+    .num-big {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink2);
+    }
+
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      box-sizing: border-box;
+      background: white;
+    }
+
+    .timeline-card {
+      padding: 40px;
+      margin-bottom: 48px;
+      border-radius: var(--r-xl);
+      background: #fff;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      border: 1px solid var(--border);
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        padding: 60px 0 20px;
+        text-align: left;
+      }
+
+      .cam-container {
+        grid-template-columns: 1fr;
+      }
+
+      .steps-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+
+      .chart-box {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+
+<body data-page="blink">
+  <canvas id="fluid-canvas"
+    style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
+  <div id="_nav"></div>
+  <div class="page page-in">
+    <div class="w">
+
+      <div class="auth-bar" id="auth-bar">
+        Not signed in. <a href="index.html">Sign in</a> to view your live data.
+      </div>
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-tag">Biosignal · Channel 3 · 15% CLI Weight</div>
+        <h1 class="display-xl" style="margin-bottom: 24px;">Blink Rate<br><span class="muted">Monitor.</span></h1>
+        <p style="font-size: 19px; color: var(--ink3); max-width: 540px; line-height: 1.6;">
+          Your blink reflex is suppressed by the basal ganglia during high attentional demand. StudyTwin detects this in
+          real-time.
+        </p>
+      </div>
+
+      <!-- Instructions -->
+      <div class="card instr-card" data-reveal>
+        <div class="eyebrow" style="margin-bottom: 32px;">How to Start</div>
+        <div class="steps-grid">
+          <div>
+            <div class="step-num">01</div>
+            <p style="font-size: 15px; color: var(--ink3);">Find your UID — open the browser console after login and
+              type <code
+                style="font-family:var(--ff-mono);background:var(--bg);padding:4px 6px;border-radius:4px;border:1px solid var(--border);color:var(--cobalt);font-size:13px;">firebase.auth().currentUser.uid</code>
+            </p>
+          </div>
+          <div>
+            <div class="step-num">02</div>
+            <p style="font-size: 15px; color: var(--ink3);">In your terminal run <code
+                style="font-family:var(--ff-mono);background:var(--bg);padding:4px 6px;border-radius:4px;border:1px solid var(--border);color:var(--cobalt);font-size:13px;">python blink_detector.py --uid YOUR_UID</code>
+              and keep it running</p>
+          </div>
+          <div>
+            <div class="step-num">03</div>
+            <p style="font-size: 15px; color: var(--ink3);">Click Enable Camera below. This page updates automatically
+              every second via Firebase.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="cam-container" data-reveal>
+        <div class="cam-box" id="cam-box-wrapper">
+          <video id="cam-video" autoplay playsinline muted></video>
+          <div class="cam-ph" id="cam-ph">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink4); margin-bottom: 16px;">
+              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z">
+              </path>
+              <circle cx="12" cy="13" r="3"></circle>
+            </svg>
+            <div
+              style="font-family:var(--ff-mono); font-size:12px; font-weight:600; color:var(--ink4); text-transform:uppercase; letter-spacing:0.12em; text-align:center;">
+              Camera Inactive<br>Click Enable Camera</div>
+          </div>
+          <div class="cam-overlay">
+            <span class="badge badge-focused" id="v-rate"
+              style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-color:rgba(255,255,255,0.2);color:#fff;">—
+              /min</span>
+            <span class="badge" id="v-state"
+              style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-color:rgba(255,255,255,0.2);color:#fff;">No
+              signal</span>
+          </div>
+        </div>
+
+        <div class="stats-box">
+          <div>
+            <div class="eyebrow">Live Session Analytics</div>
+            <h2 class="display-md" id="state-name" style="margin-top:12px; margin-bottom:8px; font-size:36px;">Waiting
+              for Signal</h2>
+            <p style="color:var(--ink3); font-size:15px;" id="state-desc">Start python blink_detector.py to begin
+              monitoring.</p>
+          </div>
+
+          <div class="stat-row" style="margin-top:24px;">
+            <div>
+              <div class="data-label">Blinks / Min</div>
+              <div class="data-val" id="val-rate" style="margin-top:12px; font-size: 40px;">—</div>
+            </div>
+            <div>
+              <div class="data-label">Total Blinks</div>
+              <div class="data-val" id="val-total" style="color:var(--ink); margin-top:12px; font-size: 40px;">—</div>
+            </div>
+          </div>
+
+          <div style="margin-top:8px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+              <span class="data-label">CLI Blink Score</span>
+              <span class="data-label" id="score-header-val" style="color:var(--cobalt)">— / 100</span>
+            </div>
+            <div
+              style="height:10px; background:var(--bg3); border:1px solid var(--border); border-radius:100px; overflow:hidden;">
+              <div id="score-fill"
+                style="height:100%; width:0%; background:linear-gradient(90deg, var(--emerald) 0%, var(--amber) 50%, var(--red) 100%); transition: width 0.8s var(--ease);">
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-primary" id="cam-btn" onclick="startCamera()"
+            style="margin-top:24px; width:100%; justify-content:center; padding-top:16px; padding-bottom:16px; font-size: 16px;">
+            <span class="pulse-cam" style="background:#fff;animation:none;" id="cam-indicator"></span> Enable Camera
+          </button>
+        </div>
+      </div>
+
+      <!-- Longitudinal Section -->
+      <div style="margin-bottom: 96px;" data-reveal>
+        <div class="eyebrow" style="margin-bottom: 24px; color: var(--cobalt);">LONGITUDINAL ANALYSIS</div>
+        <h2 class="display-lg" style="margin-bottom: 40px; font-size: 32px; letter-spacing: -1px; font-weight: 700;">
+          Brain Circuit Load — Last 7 Days</h2>
+
+        <div class="timeline-card">
+          <div style="position: relative; height: 320px; width: 100%;">
+            <canvas id="longitudinal-chart"></canvas>
+          </div>
+          <div style="display: flex; justify-content: center; gap: 32px; margin-top: 24px;">
+            <div class="legend-item"><span class="legend-dot" style="border: 3px solid #D97706;"></span> Executive</div>
+            <div class="legend-item"><span class="legend-dot" style="border: 3px solid #2563EB;"></span> Language</div>
+            <div class="legend-item"><span class="legend-dot" style="border: 3px solid #059669;"></span> Visual</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+          <div class="timeline-card" style="margin-bottom: 0px; padding: 32px;">
+            <div
+              style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 100px; background: rgba(5, 150, 105, 0.08); border: 1px solid rgba(5, 150, 105, 0.15); margin-bottom: 32px;">
+              <span style="font-size: 10px;">🧠</span>
+              <span style="font-size: 11px; font-weight: 700; color: #059669; letter-spacing: 0.06em;">EXECUTIVE</span>
+            </div>
+            <div style="font-size: 14px; color: var(--ink3); margin-bottom: 8px;">7-Day Avg</div>
+            <div
+              style="font-size: 36px; font-weight: 400; color: var(--ink); margin-bottom: 24px; letter-spacing: -1px;">
+              64%</div>
+            <div style="font-size: 14px; color: var(--ink2); line-height: 1.6;">Consistently high — consider lighter
+              problem-set days this week.</div>
+          </div>
+
+          <div class="timeline-card" style="margin-bottom: 0px; padding: 32px;">
+            <div
+              style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 100px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.15); margin-bottom: 32px;">
+              <span style="font-size: 10px;">🧠</span>
+              <span style="font-size: 11px; font-weight: 700; color: #2563EB; letter-spacing: 0.06em;">LANGUAGE</span>
+            </div>
+            <div style="font-size: 14px; color: var(--ink3); margin-bottom: 8px;">7-Day Avg</div>
+            <div
+              style="font-size: 36px; font-weight: 400; color: var(--ink); margin-bottom: 24px; letter-spacing: -1px;">
+              42%</div>
+            <div style="font-size: 14px; color: var(--ink2); line-height: 1.6;">Peak on Wednesday (Reading day). Normal
+              parameters.</div>
+          </div>
+
+          <div class="timeline-card" style="margin-bottom: 0px; padding: 32px;">
+            <div
+              style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 100px; background: rgba(5, 150, 105, 0.08); border: 1px solid rgba(5, 150, 105, 0.15); margin-bottom: 32px;">
+              <span style="font-size: 10px;">🧠</span>
+              <span style="font-size: 11px; font-weight: 700; color: #059669; letter-spacing: 0.06em;">VISUAL</span>
+            </div>
+            <div style="font-size: 14px; color: var(--ink3); margin-bottom: 8px;">7-Day Avg</div>
+            <div
+              style="font-size: 36px; font-weight: 400; color: var(--ink); margin-bottom: 24px; letter-spacing: -1px;">
+              28%</div>
+            <div style="font-size: 14px; color: var(--ink2); line-height: 1.6;">Under-utilised. Try incorporating more
+              diagrams for better retention.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 60-Second Timeline Card -->
+      <div class="timeline-card" data-reveal>
+        <div
+          style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <h3
+              style="font-size: 22px; font-weight: 700; color: var(--ink); margin-bottom: 8px; font-family: var(--ff); letter-spacing: -0.5px;">
+              60-Second Timeline</h3>
+            <p style="color:var(--ink3); font-size:14px;">Rolling window · 1 data point per second</p>
+          </div>
+          <div style="display:flex; gap:24px; align-items:center;">
+            <div style="display:flex; gap:8px; align-items:center; font-size:13px; font-weight:500; color:var(--ink2);">
+              <div style="width:16px;height:3px;background:var(--cobalt);border-radius:2px;"></div>Blinks/min
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; font-size:13px; font-weight:500; color:var(--ink2);">
+              <div style="width:16px;height:0;border-top:2px dashed rgba(220,38,38,0.4);"></div>Threshold (10/min)
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height: 260px; position: relative;">
+          <canvas id="blink-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Science Section List (No card background) -->
+      <div style="display: flex; flex-direction: column; gap: 80px; margin-bottom: 100px; padding-left: 12px;"
+        data-reveal-group>
+        <div data-reveal style="max-width: 600px;">
+          <div
+            style="font-size: 56px; font-weight: 300; color: var(--ink); line-height: 1; margin-bottom: 20px; letter-spacing: -1.5px; font-family: var(--ff);">
+            17.4</div>
+          <div
+            style="font-size: 11px; font-weight: 700; color: var(--cobalt); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            RESTING BLINKS / MIN</div>
+          <p style="font-size: 14px; color: var(--ink3); line-height: 1.6;">Average spontaneous rate in adults.
+            Regulated by dopaminergic basal ganglia. — Stern et al., 1994</p>
+        </div>
+        <div data-reveal style="max-width: 600px;">
+          <div
+            style="font-size: 56px; font-weight: 300; color: var(--ink); line-height: 1; margin-bottom: 20px; letter-spacing: -1.5px; font-family: var(--ff);">
+            7.1</div>
+          <div
+            style="font-size: 11px; font-weight: 700; color: var(--amber); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            READING BLINKS / MIN</div>
+          <p style="font-size: 14px; color: var(--ink3); line-height: 1.6;">Mean rate during intensive reading tasks. A
+            59% suppression from baseline driven by attentional demand.</p>
+        </div>
+        <div data-reveal style="max-width: 600px;">
+          <div
+            style="font-size: 56px; font-weight: 300; color: var(--ink); line-height: 1; margin-bottom: 20px; letter-spacing: -1.5px; font-family: var(--ff);">
+            r = .41</div>
+          <div
+            style="font-size: 11px; font-weight: 700; color: var(--emerald); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            NASA-TLX CORRELATION</div>
+          <p style="font-size: 14px; color: var(--ink3); line-height: 1.6;">Pearson correlation with self-reported
+            cognitive load in StudyTwin pilot study — n = 5 subjects, 3 sessions.</p>
+        </div>
+      </div>
+
+    </div> <!-- /w -->
+  </div> <!-- /page -->
+
+  <hr />
+  <div id="_footer"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="aura.js"></script>
+  <script src="app.js"></script>
+
+  <script>
+    let aura = null;
+    window.addEventListener('load', () => {
+      if (typeof AuraBackground !== 'undefined') {
+        aura = new AuraBackground('fluid-canvas');
+      }
+    });
+
+    /* ─── CHART INIT ─── */
+    const MAX_PTS = 60;
+    const chartData = new Array(MAX_PTS).fill(null);
+    const chartLbls = new Array(MAX_PTS).fill('');
+
+    // Longitudinal Chart
+    const ctxLong = document.getElementById('longitudinal-chart').getContext('2d');
+    new Chart(ctxLong, {
+      type: 'line',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [
+          {
+            data: [45, 82, 55, 91, 60, 40, 75],
+            borderColor: '#D97706',
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            tension: 0.4,
+            pointBackgroundColor: 'white',
+            pointBorderColor: '#D97706',
+            pointBorderWidth: 2.5,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          },
+          {
+            data: [30, 40, 85, 45, 50, 30, 35],
+            borderColor: '#2563EB',
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            tension: 0.4,
+            pointBackgroundColor: 'white',
+            pointBorderColor: '#2563EB',
+            pointBorderWidth: 2.5,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          },
+          {
+            data: [20, 25, 30, 35, 25, 45, 30],
+            borderColor: '#059669',
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            tension: 0.4,
+            pointBackgroundColor: 'white',
+            pointBorderColor: '#059669',
+            pointBorderWidth: 2.5,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { family: "'Inter', sans-serif", size: 12 } } },
+          y: { min: 0, max: 100, ticks: { stepSize: 10, color: '#9CA3AF', font: { family: "'Inter', sans-serif", size: 11 } }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { dash: [5, 5] } }
+        }
+      }
+    });
+
+    // Blink Chart
+    const ctx = document.getElementById('blink-chart').getContext('2d');
+    const blinkChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: chartLbls,
+        datasets: [
+          {
+            data: chartData,
+            borderColor: '#2563EB',
+            backgroundColor: 'rgba(37,99,235,0.06)',
+            borderWidth: 2,
+            tension: 0.45,
+            fill: true,
+            pointRadius: 0,
+            spanGaps: true
+          },
+          {
+            data: new Array(MAX_PTS).fill(10),
+            borderColor: 'rgba(220,38,38,0.4)',
+            borderWidth: 1.5,
+            borderDash: [6, 6],
+            pointRadius: 0,
+            fill: false,
+            tension: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 400, easing: 'linear' },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: { min: 0, max: 30, grid: { color: 'rgba(0,0,0,0.03)', drawBorder: false }, ticks: { stepSize: 5, color: '#9CA3AF', font: { family: "'Inter', sans-serif", size: 11 } } }
+        }
+      }
+    });
+
+    /* ─── FIREBASE / Logic ─── */
+    // Assumes firebase is already initialized by app.js, otherwise fallback fallback:
+    const FB_CONFIG = {
+      apiKey: "AIzaSyBXZZ-wN2wzguf35rfPaLqm61gx0LoxIAA",
+      authDomain: "studytwin-rvce.firebaseapp.com",
+      databaseURL: "https://studytwin-rvce-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "studytwin-rvce",
+      storageBucket: "studytwin-rvce.firebasestorage.app",
+      messagingSenderId: "345837599600",
+      appId: "1:345837599600:web:f2c191ab3cf7c24ca5edb5"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(FB_CONFIG);
+    }
+
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(user => {
+      const bar = document.getElementById('auth-bar');
+      if (!user) {
+        bar.style.display = 'block';
+        return;
+      }
+      bar.style.display = 'none';
+
+      const liveRef = firebase.database().ref('/sessions/' + user.uid + '/live');
+      liveRef.on('value', snap => {
+        const d = snap.val();
+        if (d && (d.blink_rate_per_min !== undefined || d.blink_score !== undefined)) {
+          updateUI(d);
+        }
+      });
+    });
+
+    function getStateInfo(rate) {
+      if (rate === null || rate === undefined) return { label: 'Waiting for Signal', color: 'var(--ink)' };
+      if (rate >= 15) return { label: 'Calm', color: 'var(--emerald)' };
+      if (rate >= 10) return { label: 'Focused', color: 'var(--cobalt)' };
+      if (rate >= 7) return { label: 'Elevated', color: 'var(--amber)' };
+      return { label: 'Overloaded', color: 'var(--red)' };
+    }
+
+    function updateUI(d) {
+      const rate = d.blink_rate_per_min !== undefined ? d.blink_rate_per_min : null;
+      const score = d.blink_score !== undefined ? d.blink_score : null;
+      const total = d.total_blinks !== undefined ? d.total_blinks : null;
+
+      const st = getStateInfo(rate);
+
+      document.getElementById('state-name').textContent = st.label;
+      document.getElementById('state-name').style.color = st.color;
+      document.getElementById('val-rate').textContent = rate !== null ? Math.round(rate) : '—';
+      document.getElementById('val-rate').style.color = st.color;
+      document.getElementById('val-total').textContent = total !== null ? total : '—';
+
+      if (score !== null) {
+        document.getElementById('score-fill').style.width = Math.round(score) + '%';
+        document.getElementById('score-header-val').textContent = Math.round(score) + ' / 100';
+      }
+
+      document.getElementById('v-rate').textContent = rate !== null ? Math.round(rate) + ' /min' : '— /min';
+      document.getElementById('v-state').textContent = st.label;
+
+      chartData.shift();
+      chartData.push(rate !== null ? Math.round(rate * 10) / 10 : null);
+      blinkChart.update('none');
+    }
+
+    function startCamera() {
+      const video = document.getElementById('cam-video');
+      const ph = document.getElementById('cam-ph');
+      const btn = document.getElementById('cam-btn');
+      const wrapper = document.getElementById('cam-box-wrapper');
+      const indicator = document.getElementById('cam-indicator');
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        btn.innerHTML = 'Camera not supported';
+        btn.disabled = true;
+        return;
+      }
+
+      btn.innerHTML = 'Requesting permission…';
+      btn.disabled = true;
+
+      navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+          const videoDevices = devices.filter(d => d.kind === 'videoinput');
+          // Start with default constraints
+          let constraints = { video: { facingMode: 'user' }, audio: false };
+          // If we have more than one camera and the user wants "capture 1" (the second device)
+          if (videoDevices.length > 1) {
+             constraints = { video: { deviceId: { exact: videoDevices[1].deviceId } }, audio: false };
+          }
+          return navigator.mediaDevices.getUserMedia(constraints);
+        })
+        .then(stream => {
+          video.srcObject = stream;
+          video.play();
+          ph.style.display = 'none';
+          wrapper.classList.add('active');
+          btn.innerHTML = '<span class="pulse-cam" style="animation: pulse-red 2s infinite;"></span> Camera Active';
+        })
+        .catch(err => {
+          ph.innerHTML = '<div style="font-size:14px;color:var(--red);font-weight:500;">Camera access denied or device in use by another app</div>';
+          btn.innerHTML = 'Camera Blocked';
+          btn.disabled = false;
+        });
+    }
+  </script>
+</body>
+
+</html>

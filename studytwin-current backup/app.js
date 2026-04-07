@@ -169,12 +169,10 @@ const ST = (() => {
     const hrvS = Math.max(0, 100 - ((hrv - 18) / 70) * 100)
     const blS = bl < 10 ? 82 : Math.max(0, 100 - (bl / 24) * 62)
     // ── Blink sub-score ─────────────────────────────────────────────────────
-    // Use REAL MediaPipe score when available, else simulate
-    const blinkScoreReal = (
-      window.BlinkDetector &&
-      window.BlinkDetector.ready() &&
-      window.BlinkDetector.hasCam()
-    ) ? window.BlinkDetector.getScore() : blS
+    // Read from blink_server.py via window.BLINK_SCORE (set by blink-detection.js)
+    const blink_score = (typeof window.BLINK_SCORE === 'number')
+                        ? window.BLINK_SCORE
+                        : 50;
 
     // Also use real blink rate if available
     const blinkRateReal = (
@@ -184,7 +182,7 @@ const ST = (() => {
     ) ? window.BlinkDetector.getRate() : Math.round(bl * 10) / 10
 
     // IEEE §V weighted fusion: CLI = GSR(0.50) + HRV(0.35) + Blink(0.15)
-    const raw = gsrS * 0.50 + hrvS * 0.35 + blinkScoreReal * 0.15
+    const raw = gsrS * 0.50 + hrvS * 0.35 + blink_score * 0.15
     // EMA smoothing
     const cli = Math.round(_d.cli * (1 - ALPHA) + raw * ALPHA)
     _d = {
@@ -232,6 +230,7 @@ const NAV_LINKS = [
   { href: 'index.html', label: 'Home' },
   { href: 'dashboard.html', label: 'Dashboard' },
   { href: 'brain-map.html', label: 'Brain Intelligence' },
+  { href: 'blink.html', label: 'Blink Rate' },
   { href: 'how-it-works.html', label: 'How It Works' },
   { href: 'get-started.html', label: 'Get Started' },
 ]

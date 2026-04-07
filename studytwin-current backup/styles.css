@@ -11,6 +11,160 @@
   --border: #E5E7EB;
   --border2: #D1D5DB;
 
+  /* ── BLINK STRIP (landing page) ────────────────────────────────────────── */
+.blink-strip {
+  padding: 80px 48px;
+  border-top: 1px solid var(--border, #1E2D42);
+}
+.blink-strip-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 64px;
+  align-items: center;
+}
+.blink-strip-tag {
+  font-family: var(--mono, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent, #1B4FD8);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 12px;
+}
+.blink-strip-title {
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 14px;
+  line-height: 1.15;
+}
+.blink-strip-desc {
+  font-size: 14px;
+  color: var(--text2, #94A3B8);
+  line-height: 1.75;
+  max-width: 480px;
+  margin-bottom: 28px;
+}
+.blink-stat-row {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 28px;
+}
+.blink-stat-val {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: var(--text, #E2E8F0);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.blink-stat-lbl {
+  font-family: var(--mono, monospace);
+  font-size: 10px;
+  color: var(--text3, #4A5568);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.blink-strip-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent, #1B4FD8);
+  color: #fff;
+  text-decoration: none;
+  padding: 11px 22px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  transition: opacity 0.2s;
+}
+.blink-strip-cta:hover { opacity: 0.88; }
+
+/* Camera column */
+.blink-cam-col { display: flex; justify-content: center; }
+.cam-frame {
+  width: 280px;
+  height: 280px;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.cam-inner {
+  width: 100%;
+  height: 100%;
+  background: var(--bg2, #0D1422);
+  border: 1px solid var(--border, #1E2D42);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.cam-placeholder {
+  text-align: center;
+}
+.cam-icon {
+  font-size: 48px;
+  color: var(--border, #1E2D42);
+  margin-bottom: 14px;
+  animation: cam-pulse 3s ease-in-out infinite;
+}
+@keyframes cam-pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+.cam-text {
+  font-size: 12px;
+  color: var(--text3, #4A5568);
+  line-height: 1.6;
+  font-family: var(--mono, monospace);
+  text-align: center;
+}
+.cam-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 10px 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+}
+.cam-stat-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cam-stat-badge {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+.cam-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  border: 2px solid transparent;
+  pointer-events: none;
+  transition: border-color 0.5s;
+}
+.cam-ring.active {
+  border-color: var(--accent, #1B4FD8);
+  box-shadow: 0 0 16px rgba(27,79,216,0.3);
+}
+
+@media (max-width: 900px) {
+  .blink-strip-inner { grid-template-columns: 1fr; gap: 40px; }
+  .blink-cam-col { justify-content: flex-start; }
+}
+@media (max-width: 600px) {
+  .blink-strip { padding: 60px 24px; }
+  .blink-stat-row { gap: 20px; }
+}
+
   /* ─ Text ─ */
   --ink: #111827;
   --ink2: #374151;

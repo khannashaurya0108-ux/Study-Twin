@@ -912,8 +912,18 @@
                 </div>
               </div>
               <div class="sensor-row">
-                <div class="sensor-top"><span class="sensor-name">Blink rate</span><span class="sensor-val"
-                    id="r-blink">13.8 /min</span></div>
+                <div class="sensor-top">
+                  <span class="sensor-name">Blink rate</span>
+                  <div style="display:flex; align-items:center;">
+                    <span id="blink-server-status" style="font-size:11px; font-family:monospace; color:#EF4444;">
+                      ○ Offline
+                    </span>
+                    <span id="blink-calibration-status" style="font-size:11px; font-family:monospace; color:#F59E0B; margin-left:8px; margin-right: 8px;">
+                      Calibrating…
+                    </span>
+                    <span class="sensor-val" id="r-blink">13.8 /min</span>
+                  </div>
+                </div>
                 <div class="bar-track">
                   <div class="bar-fill" id="bar-blink" style="width:57%"></div>
                 </div>
@@ -1073,19 +1083,13 @@
   <div id="_footer"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="aura.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"
-    crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js"
-    crossorigin="anonymous"></script>
+  <!-- This order is mandatory -->
   <script src="blink-detection.js"></script>
   <script src="app.js"></script>
   <script>
@@ -1217,6 +1221,7 @@
       setBar('bar-blink', (d.blink / 24) * 100, col); setBar('bar-bat', ((d.battery - 3400) / 780) * 100, '#059669')
       setCol('r-gsr', col); setCol('r-gsrd', col); setCol('r-blink', col)
 
+ 
       // History
       set('hist-today', Math.round(d.cli)); setCol('hist-today', col)
 

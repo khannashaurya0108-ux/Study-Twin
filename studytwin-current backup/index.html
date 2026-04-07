@@ -1,436 +1,829 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>StudyTwin — Study with your biology, not against it</title>
-<meta name="description" content="StudyTwin fuses biosignals into a real-time Cognitive Load Index — then adapts your session automatically."/>
-<link rel="stylesheet" href="styles.css"/>
-<style>
-/* ── HERO ── */
-.hero{
-  min-height:100vh; display:grid; grid-template-columns:1.1fr 0.9fr;
-  align-items:center; gap:64px;
-  padding:calc(var(--nav-h)+60px) 48px 80px;
-  max-width:1300px; margin:0 auto;
-}
-@keyframes antigravity {
-  0%, 100% { transform:translateY(0); }
-  50% { transform:translateY(-15px); }
-}
-.hero-float { animation:antigravity 6s var(--ease) infinite; display:inline-block; }
-.hero-float-delay { animation-delay:.8s; }
-.hero-float-delay2 { animation-delay:1.6s; }
-
-.hero-badges { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
-
-.hero-tag{
-  display:inline-flex; align-items:center; gap:8px;
-  font-family:var(--ff); font-size:11px; font-weight:600; color:var(--cobalt);
-  background:var(--cobalt-l); border:1px solid rgba(37,99,235,.18);
-  border-radius:100px; padding:7px 16px; letter-spacing:.08em;
-}
-
-.tribe-badge {
-  display:inline-flex; align-items:center; gap:8px;
-  font-family:var(--ff); font-size:11px; font-weight:700; color:var(--amber);
-  background:rgba(217, 119, 6, 0.08); border:1px solid rgba(217, 119, 6, 0.2);
-  border-radius:100px; padding:7px 16px; letter-spacing:.08em;
-}
-
-.hero-actions{ display:flex; align-items:center; gap:16px; margin:48px 0 64px; }
-
-.hero-mini-stats{
-  display:grid; grid-template-columns:repeat(4,1fr);
-  border:1px solid var(--border); border-radius:var(--r-xl); overflow:hidden;
-  background:var(--bg2);
-  box-shadow: var(--shadow);
-}
-.hms-cell{ padding:24px; background:var(--bg2); border-right:1px solid var(--border); }
-.hms-cell:last-child{ border-right:none; }
-
-/* Brain panel */
-.brain-wrap{
-  position:relative; height:580px;
-  border:1px solid var(--border); border-radius:var(--r-xl);
-  background:var(--bg2); overflow:hidden;
-  box-shadow: 0 40px 80px -20px rgba(37, 99, 235, 0.15);
-}
-#brain-canvas{ width:100%; height:100%; display:block; }
-.brain-hud-tl{
-  position:absolute; top:24px; left:24px;
-  background:rgba(255,255,255,.88); backdrop-filter:blur(16px);
-  border:1px solid var(--border); border-radius:var(--r-md);
-  padding:20px 24px;
-}
-.brain-hud-tr{
-  position:absolute; top:24px; right:24px;
-  background:rgba(255,255,255,.88); backdrop-filter:blur(16px);
-  border:1px solid var(--border); border-radius:100px; padding:10px 20px;
-}
-.brain-hud-bl{
-  position:absolute; bottom:24px; left:24px;
-  background:rgba(255,255,255,.88); backdrop-filter:blur(16px);
-  border:1px solid var(--border); border-radius:var(--r-md);
-  padding:16px 24px; display:flex; gap:32px;
-}
-.brain-hint{
-  position:absolute; bottom:20px; right:24px;
-  font-family:var(--ff-mono); font-size:9px; font-weight:600;
-  color:var(--ink4); opacity:.6; user-select:none; letter-spacing:.1em;
-}
-
-/* Telemetry strip */
-.strip{ background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
-.strip-grid{ max-width:1300px; margin:0 auto; display:grid; grid-template-columns:repeat(8,1fr); }
-.strip-cell{ padding:24px 20px; border-right:1px solid var(--border); }
-.strip-cell:last-child{ border-right:none; }
-
-/* Problem */
-.problem-grid{ display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:start; margin-top:64px; }
-.pfact{
-  display:flex; align-items:center; gap:24px;
-  background:var(--bg2); border:1px solid var(--border);
-  border-left:4px solid var(--cobalt); border-radius:0 var(--r-xl) var(--r-xl) 0;
-  padding:28px 32px; margin-bottom:20px;
-  transition: var(--trans);
-}
-.pfact:hover{ box-shadow: 0 15px 30px -5px rgba(0,0,0,0.05); transform:translateX(8px); }
-.pfact-n{ font-family:var(--ff); font-size:42px; font-weight:900; color:var(--cobalt); flex-shrink:0; letter-spacing:-1.5px; }
-
-/* Features */
-.feat-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin-top:64px; }
-.feat{
-  background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl);
-  padding:40px 36px; position:relative; overflow:hidden;
-  transition: var(--trans);
-}
-.feat:hover{ border-color:rgba(37,99,235,.5); transform:translateY(-8px); box-shadow:0 25px 50px -12px rgba(37,99,235,0.15); }
-.feat-icon{
-  width:52px; height:52px; border-radius:16px;
-  background:var(--cobalt-l); border:1px solid rgba(37,99,235,.12);
-  display:flex; align-items:center; justify-content:center; margin-bottom:28px;
-}
-.feat h3{ font-family:var(--ff); font-size:20px; font-weight:700; color:var(--ink); margin-bottom:14px; letter-spacing:-.5px; }
-.feat p{ font-size:15px; color:var(--ink3); line-height:1.75; }
-
-/* Numbers */
-.num-grid{ display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--border); border-radius:var(--r-xl); overflow:hidden; margin-top:64px; }
-.num-cell{ background:var(--bg2); padding:52px 40px; border-right:1px solid var(--border); }
-.num-cell:last-child{ border-right:none; }
-.num-big{ font-family:var(--ff); font-size:64px; font-weight:900; letter-spacing:-4px; line-height:1; color:var(--cobalt); margin-bottom:16px; }
-
-/* CTA */
-.cta-wrap{ text-align:center; max-width:700px; margin:0 auto; }
-
-@media(max-width:1100px){
-  .hero{ grid-template-columns:1fr; padding:120px 24px 80px; gap:48px; text-align: center; }
-  .hero-badges, .hero-actions { justify-content: center; }
-  .hero-mini-stats { grid-template-columns: 1fr 1fr; }
-  .hms-cell:nth-child(2) { border-right: none; }
-  .hms-cell:nth-child(n+3) { border-top: 1px solid var(--border); }
-  .strip-grid{ grid-template-columns:repeat(4,1fr); }
-  .strip-cell:nth-child(4) { border-right: none; }
-  .strip-cell:nth-child(n+5) { border-top: 1px solid var(--border); }
-}
-
-@media(max-width:768px){
-  .problem-grid{ grid-template-columns:1fr; gap:48px; }
-  .feat-grid{ grid-template-columns:1fr; }
-  .num-grid{ grid-template-columns:1fr 1fr; }
-  .num-cell:nth-child(2) { border-right: none; }
-  .num-cell:nth-child(n+3) { border-top: 1px solid var(--border); }
-}
-</style>
-</head>
-<body data-page="index">
-<canvas id="fluid-canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
-<div id="_nav"></div>
-<div class="page">
-
-<!-- HERO -->
-<section style="position:relative;overflow:hidden;">
-  <div class="hero">
-    <div>
-      <div class="hero-badges">
-        <div class="hero-tag"><div class="pulse"></div>WEARABLE · EDGE AI · REAL-TIME</div>
-        <div class="tribe-badge">TRIBE v2</div>
-      </div>
-      <h1 class="display-xl" style="margin-bottom:32px; font-size: clamp(56px, 7vw, 92px);">
-        <span class="hero-float">Study with</span><br>
-        <span class="hero-float hero-float-delay grad">your biology,</span><br>
-        <span class="hero-float hero-float-delay2 muted">not against it.</span>
-      </h1>
-      <p style="font-size:19px;font-weight:400;color:var(--ink3);line-height:1.76;max-width:520px; margin: 0 auto 0 0;">
-        StudyTwin fuses skin conductance, heart rate variability, and blink rate
-        into a real-time Cognitive Load Index — then adapts your session
-        automatically. Not a timer. A closed loop.
-      </p>
-      <div class="hero-actions">
-        <a href="dashboard.html" class="btn-primary" style="padding: 14px 32px; font-size: 15px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          Open Dashboard
-        </a>
-        <a href="how-it-works.html" class="btn-ghost" style="padding: 14px 28px; font-size: 15px;">How it works →</a>
-      </div>
-      <div class="hero-mini-stats">
-        <div class="hms-cell">
-          <div class="data-label" style="margin-bottom:12px;">Load Index</div>
-          <div class="data-val" id="h-cli">42</div>
-        </div>
-        <div class="hms-cell">
-          <div class="data-label" style="margin-bottom:12px;">Heart rate</div>
-          <div class="data-val" style="color:var(--ink2)" id="h-hr">68 bpm</div>
-        </div>
-        <div class="hms-cell">
-          <div class="data-label" style="margin-bottom:12px;">Blink rate</div>
-          <div class="data-val" style="color:var(--ink2)" id="h-blink">13.8 /min</div>
-        </div>
-        <div class="hms-cell">
-          <div class="data-label" style="margin-bottom:12px;">Regions Mapped</div>
-          <div class="data-val" style="color:var(--amber)">3</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: 3D Brain -->
-    <div class="brain-wrap">
-      <canvas id="brain-canvas"></canvas>
-      <div class="brain-hud-tl">
-        <div class="data-label" style="margin-bottom:8px;">Cognitive Load</div>
-        <div style="font-family:var(--ff);font-size:52px;font-weight:900;line-height:1;transition:color .6s;letter-spacing:-3px;" id="hud-cli">42</div>
-        <div class="data-label" style="margin-top:6px;">out of 100</div>
-      </div>
-      <div class="brain-hud-tr">
-        <span class="badge badge-focused" id="hud-badge">Focused</span>
-      </div>
-      <div class="brain-hud-bl">
-        <div>
-          <div class="data-label" style="margin-bottom:6px;">Accuracy</div>
-          <div class="data-value" id="hud-accuracy">83.4%</div>
-        </div>
-        <div>
-          <div class="data-label" style="margin-bottom:6px;">Latency</div>
-          <div class="data-value" id="hud-latency">47ms</div>
-        </div>
-      </div>
-      <div class="brain-hint">INTERACTIVE NEURAL TWIN</div>
-    </div>
-  </div>
-</section>
-
-<!-- LIVE STRIP -->
-<div class="strip">
-  <div class="strip-grid">
-    <div class="strip-cell"><div class="data-label" style="margin-bottom:10px;">Heart Rate</div><div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--ink2);letter-spacing:-.5px;" id="s-hr">68 bpm</div></div>
-    <div class="strip-cell"><div class="data-label" style="margin-bottom:10px;">HRV RMSSD</div><div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--ink2);letter-spacing:-.5px;" id="s-hrv">52.4 ms</div></div>
-    <div class="strip-cell"><div class="data-label" style="margin-bottom:10px;">Skin Response</div><div style="font-family:var(--ff);font-size:20px;font-weight:700;" id="s-gsr">14.2%</div></div>
-    <div class="strip-cell"><div class="data-label" style="margin-bottom:10px;">Blink Rate</div><div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--ink2);letter-spacing:-.5px;" id="s-blink">13.8/min</div></div>
-    <div class="strip-cell"><div class="data-label" style="margin-bottom:10px;">SpO₂</div><div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--emerald);letter-spacing:-.5px;" id="s-spo2">98%</div></div>
-    <div class="strip-cell"><div class="data-label" style="margin-bottom:10px;">Load Index</div><div style="font-family:var(--ff);font-size:20px;font-weight:700;" id="s-cli">42/100</div></div>
-    <div class="strip-cell"><div class="data-label" style="margin-bottom:10px;">Executive Load</div><div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--amber);" id="s-exec">82%</div></div>
-    <div class="strip-cell"><div class="data-label" style="margin-bottom:10px;">Language Load</div><div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--cobalt);" id="s-lang">67%</div></div>
-  </div>
-</div>
-
-<!-- PROBLEM -->
-<section class="section">
-  <div class="w">
-    <div class="eyebrow" data-reveal>The problem</div>
-    <div class="problem-grid">
-      <div>
-        <h2 class="display-lg" data-reveal style="margin-bottom:28px;">Your brain hits a wall.<br><span class="muted">You don't know when.</span></h2>
-        <p data-reveal style="font-size:17px;color:var(--ink3);line-height:1.8;margin-bottom:20px;">After 40–50 minutes of intense study, your brain enters cognitive overload. New information stops being retained — but you keep reading the same paragraph.</p>
-        <p data-reveal style="font-size:17px;color:var(--ink3);line-height:1.8;margin-bottom:40px;">Standard timers can't see this. Only your body can — and StudyTwin is the first wearable that listens.</p>
-        <a href="how-it-works.html" class="btn-ghost" data-reveal>How StudyTwin detects this →</a>
-      </div>
-      <div data-reveal-group>
-        <div class="pfact" data-reveal>
-          <div class="pfact-n">40<span style="font-size:24px;font-weight:600;">min</span></div>
-          <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Average time before cognitive saturation begins in intense study sessions</p>
-        </div>
-        <div class="pfact" data-reveal>
-          <div class="pfact-n">23<span style="font-size:24px;font-weight:600;">%</span></div>
-          <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Higher recall scores when students receive real-time cognitive load feedback</p>
-        </div>
-        <div class="pfact" data-reveal style="border-left-color:var(--border2);">
-          <div class="pfact-n" style="color:var(--ink4);">0</div>
-          <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Consumer wearables that close the loop and adapt your schedule in real time</p>
-        </div>
-        <div class="pfact" data-reveal style="border-left-color:var(--amber);">
-          <div class="pfact-n" style="color:var(--amber);">3</div>
-          <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Distinct brain circuits that StudyTwin tracks individually — prefrontal executive, language, and visual processing networks</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FEATURES -->
-<section class="section" style="background:var(--bg3);">
-  <div class="w">
-    <div class="eyebrow" data-reveal>Capabilities</div>
-    <h2 class="display-lg" data-reveal style="max-width:600px; margin-bottom: 48px;">Everything your brain needs.<br><span class="muted">Nothing it doesn't.</span></h2>
-    <div class="feat-grid" data-reveal-group>
-      <div class="feat" data-reveal>
-        <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-        <h3>Reads your body, every second</h3>
-        <p>GSR, HRV, and blink rate fused into one number — your Cognitive Load Index — via IEEE-validated weighted fusion.</p>
-      </div>
-      <div class="feat" data-reveal>
-        <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
-        <h3>Adapts your session automatically</h3>
-        <p>When load rises, StudyTwin shortens your session, triggers a break, or reduces task difficulty. No manual input.</p>
-      </div>
-      <div class="feat" data-reveal>
-        <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></div>
-        <h3>AI runs on the device</h3>
-        <p>The 1D-CNN runs on the ESP32 at 47ms latency. No cloud dependency. Your biosignals never leave the hardware.</p>
-      </div>
-      <div class="feat" data-reveal>
-        <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21c0-3.87 2.91-7 6.5-7s6.5 3.13 6.5 7"/></svg></div>
-        <h3>Calibrated to your baseline</h3>
-        <p>60-second personal calibration. Every reading is relative to you — not population averages.</p>
-      </div>
-      <div class="feat" data-reveal>
-        <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h6M9 15h4"/></svg></div>
-        <h3>Plain-language AI insights</h3>
-        <p>After each session, AI generates a summary of when you were sharp, when you drifted, and what to adjust.</p>
-      </div>
-      <div class="feat" data-reveal>
-        <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
-        <h3>Learns your rhythms over time</h3>
-        <p>Session history reveals when you peak, fade, and which tasks tax you most — then schedules around that.</p>
-      </div>
-      <div class="feat" data-reveal style="border-left: 4px solid var(--amber);">
-        <div class="feat-icon" style="background: rgba(217, 119, 6, 0.08); border-color: rgba(217, 119, 6, 0.2);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.48ZM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.48Z"/></svg></div>
-        <h3>Brain-Region Aware Routing</h3>
-        <p>When executive load peaks, TRIBE v2 reroutes you to visual material. When language circuits saturate, it surfaces numerical content. Not just a break — a smarter redirect.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- NUMBERS -->
-<section class="section">
-  <div class="w">
-    <div class="eyebrow" data-reveal>Validated results</div>
-    <h2 class="display-lg" data-reveal>Precision you can measure.</h2>
-    <div class="num-grid" data-reveal-group>
-      <div class="num-cell" data-reveal>
-        <div class="num-big"><span class="counter" data-to="83">0</span><span>%</span></div>
-        <p style="font-size:15px;color:var(--ink3);line-height:1.6;">CLI accuracy vs NASA-TLX ground truth · n=15</p>
-      </div>
-      <div class="num-cell" data-reveal>
-        <div class="num-big" style="color:var(--amber);"><span class="counter" data-to="47">0</span><span style="color:var(--amber); font-size: 32px;">ms</span></div>
-        <p style="font-size:15px;color:var(--ink3);line-height:1.6;">1D-CNN inference on ESP32-WROOM</p>
-      </div>
-      <div class="num-cell" data-reveal>
-        <div class="num-big" style="color:var(--ink2);"><span class="counter" data-to="3">0</span></div>
-        <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Independent biomarkers fused: GSR, HRV, blink</p>
-      </div>
-      <div class="num-cell" data-reveal>
-        <div class="num-big" style="color:var(--emerald);"><span class="counter" data-to="412">0</span><span style="color:var(--emerald);font-size:32px;">ms</span></div>
-        <p style="font-size:15px;color:var(--ink3);line-height:1.6;">End-to-end latency · below 500ms threshold</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CTA -->
-<section class="section" style="background:var(--bg3);">
-  <div class="w">
-    <div class="cta-wrap" data-reveal>
-      <h2 class="display-lg" style="margin-bottom:28px;">Ready to study<br><span class="grad">smarter?</span></h2>
-      <p style="font-size:18px;color:var(--ink3);line-height:1.76;margin-bottom:48px;">Open your live dashboard, see your cognitive state in real time, and let StudyTwin handle the rest.</p>
-      <div style="display:flex;justify-content:center;gap:16px; flex-wrap: wrap;">
-        <a href="dashboard.html" class="btn-primary" style="padding: 14px 36px; font-size: 15px;">Open Dashboard</a>
-        <a href="brain-map.html" class="btn-ghost" style="padding: 14px 32px; font-size: 15px;">Explore Brain Intelligence →</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-</div>
-<hr/>
-<div id="_footer"></div>
-
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="aura.js"></script>
-<script src="app.js"></script>
-<script>
-// Aura Background
-let aura = null;
-window.addEventListener('load', () => {
-  aura = new AuraBackground('fluid-canvas');
-});
-
-// Counter animation
-function runCounters(){
-  document.querySelectorAll('.counter').forEach(el=>{
-    const to=+el.dataset.to, dur=1600; let start=null
-    const step=ts=>{
-      if(!start)start=ts; const p=Math.min((ts-start)/dur,1)
-      el.textContent=Math.round((1-Math.pow(1-p,4))*to)
-      if(p<1)requestAnimationFrame(step)
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StudyTwin — Study with your biology, not against it</title>
+  <meta name="description"
+    content="StudyTwin fuses biosignals into a real-time Cognitive Load Index — then adapts your session automatically." />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: center;
+      gap: 64px;
+      padding: calc(var(--nav-h)+60px) 48px 80px;
+      max-width: 1300px;
+      margin: 0 auto;
     }
-    const io=new IntersectionObserver(en=>{if(en[0].isIntersecting){requestAnimationFrame(step);io.disconnect()}},{threshold:.3})
-    io.observe(el)
-  })
-}
-runCounters()
 
-// Brain
-let brain3d = null
-loadThree().then(THREE => {
-  console.log("Neural Twin Engine Ready")
-  brain3d = initAntigravityBrain(THREE, document.getElementById('brain-canvas'))
-}).catch(err => console.error(err))
+    @keyframes antigravity {
 
-// Wire DOM — immediate population, never blank
-ST.subscribe(data => {
-  const update = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val }
-  const setCol = (id, c) => { const el = document.getElementById(id); if(el) el.style.color = c }
-  const col = ST.color(data.cli)
+      0%,
+      100% {
+        transform: translateY(0);
+      }
 
-  // Brain HUD
-  update('hud-cli', Math.round(data.cli)); setCol('hud-cli', col)
-  update('hud-accuracy', data.accuracy)
-  update('hud-latency', data.latency)
-  const badge = document.getElementById('hud-badge')
-  if(badge) { badge.textContent = ST.label(data.state); badge.className = 'badge badge-' + data.state.replace('overloaded','over') }
+      50% {
+        transform: translateY(-15px);
+      }
+    }
 
-  // Hero mini-stats
-  update('h-cli', Math.round(data.cli)); setCol('h-cli', col)
-  update('h-hr', data.hr + ' bpm')
-  update('h-blink', data.blink + ' /min')
+    .hero-float {
+      animation: antigravity 6s var(--ease) infinite;
+      display: inline-block;
+    }
 
-  // Telemetry strip
-  update('s-hr', data.hr + ' bpm'); update('s-hrv', data.hrv + ' ms')
-  update('s-gsr', data.gsrDev + '%'); setCol('s-gsr', col)
-  update('s-blink', data.blink + '/min'); update('s-spo2', data.spo2 + '%')
-  update('s-cli', Math.round(data.cli) + '/100'); setCol('s-cli', col)
+    .hero-float-delay {
+      animation-delay: .8s;
+    }
 
-  // Brain color
-  if(brain3d) {
-    brain3d.setColor(ST.stateColor(data.state))
-    if(brain3d.triggerNeuralSpike) brain3d.triggerNeuralSpike(data.cli)
-  }
+    .hero-float-delay2 {
+      animation-delay: 1.6s;
+    }
 
-  // Aura color
-  if(aura) {
-    aura.setCLI(data.cli)
-  }
-})
+    .hero-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
 
-// Wire TRIBE data
-TRIBE.subscribe(data => {
-  const update = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val }
-  update('s-exec', data.executive + '%')
-  update('s-lang', data.language + '%')
-})
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--ff);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cobalt);
+      background: var(--cobalt-l);
+      border: 1px solid rgba(37, 99, 235, .18);
+      border-radius: 100px;
+      padding: 7px 16px;
+      letter-spacing: .08em;
+    }
 
-</script>
+    .tribe-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--ff);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--amber);
+      background: rgba(217, 119, 6, 0.08);
+      border: 1px solid rgba(217, 119, 6, 0.2);
+      border-radius: 100px;
+      padding: 7px 16px;
+      letter-spacing: .08em;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 48px 0 64px;
+    }
+
+    .hero-mini-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      background: var(--bg2);
+      box-shadow: var(--shadow);
+    }
+
+    .hms-cell {
+      padding: 24px;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+    }
+
+    .hms-cell:last-child {
+      border-right: none;
+    }
+
+    < !-- ── BLINK MONITOR PREVIEW STRIP ───────────────────────────────────────── --><section class="blink-strip" id="blink-preview"><div class="blink-strip-inner"><div class="blink-strip-text"><div class="blink-strip-tag">Biosignal Channel 3 · 15% CLI Weight</div><h3 class="blink-strip-title">Blink Rate Detection</h3><p class="blink-strip-desc">Your blink reflex is suppressed by the basal ganglia during high attentional demand. StudyTwin's Python script detects this in real time — no extra hardware required.
+ </p><div class="blink-stat-row"><div class="blink-stat"><div class="blink-stat-val" id="lp-blink-rate">—</div><div class="blink-stat-lbl">Blinks/min</div></div><div class="blink-stat"><div class="blink-stat-val" id="lp-blink-score">—</div><div class="blink-stat-lbl">CLI Score</div></div><div class="blink-stat"><div class="blink-stat-val" id="lp-blink-state">—</div><div class="blink-stat-lbl">State</div></div></div><a href="blink.html" class="blink-strip-cta">Open Blink Monitor →</a></div>< !-- Small camera feed column --><div class="blink-cam-col"><div class="cam-frame" id="cam-frame"><div class="cam-inner" id="cam-inner"><div class="cam-placeholder" id="cam-placeholder"><div class="cam-icon">◉</div><div class="cam-text">Camera starts when<br>blink_detector.py runs</div></div>< !-- Live blink overlay stats (shown over the camera column even without a real feed) --><div class="cam-overlay" id="cam-overlay"><div class="cam-stat-row"><span class="cam-stat-badge" id="lp-cam-rate">— /min</span><span class="cam-stat-badge" id="lp-cam-state" style="color:var(--accent)">No signal</span></div></div></div>< !-- Animated border ring --><div class="cam-ring" id="cam-ring"></div></div></div></div></section>
+
+    /* Brain panel */
+    .brain-wrap {
+      position: relative;
+      height: 580px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      background: var(--bg2);
+      overflow: hidden;
+      box-shadow: 0 40px 80px -20px rgba(37, 99, 235, 0.15);
+    }
+
+    #brain-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .brain-hud-tl {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      background: rgba(255, 255, 255, .88);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 20px 24px;
+    }
+
+    .brain-hud-tr {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      background: rgba(255, 255, 255, .88);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 10px 20px;
+    }
+
+    .brain-hud-bl {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      background: rgba(255, 255, 255, .88);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 16px 24px;
+      display: flex;
+      gap: 32px;
+    }
+
+    .brain-hint {
+      position: absolute;
+      bottom: 20px;
+      right: 24px;
+      font-family: var(--ff-mono);
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--ink4);
+      opacity: .6;
+      user-select: none;
+      letter-spacing: .1em;
+    }
+
+    /* Telemetry strip */
+    .strip {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .strip-grid {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+    }
+
+    .strip-cell {
+      padding: 24px 20px;
+      border-right: 1px solid var(--border);
+    }
+
+    .strip-cell:last-child {
+      border-right: none;
+    }
+
+    /* Problem */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+      margin-top: 64px;
+    }
+
+    .pfact {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--cobalt);
+      border-radius: 0 var(--r-xl) var(--r-xl) 0;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+      transition: var(--trans);
+    }
+
+    .pfact:hover {
+      box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.05);
+      transform: translateX(8px);
+    }
+
+    .pfact-n {
+      font-family: var(--ff);
+      font-size: 42px;
+      font-weight: 900;
+      color: var(--cobalt);
+      flex-shrink: 0;
+      letter-spacing: -1.5px;
+    }
+
+    /* Features */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 64px;
+    }
+
+    .feat {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 40px 36px;
+      position: relative;
+      overflow: hidden;
+      transition: var(--trans);
+    }
+
+    .feat:hover {
+      border-color: rgba(37, 99, 235, .5);
+      transform: translateY(-8px);
+      box-shadow: 0 25px 50px -12px rgba(37, 99, 235, 0.15);
+    }
+
+    .feat-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: var(--cobalt-l);
+      border: 1px solid rgba(37, 99, 235, .12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .feat h3 {
+      font-family: var(--ff);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 14px;
+      letter-spacing: -.5px;
+    }
+
+    .feat p {
+      font-size: 15px;
+      color: var(--ink3);
+      line-height: 1.75;
+    }
+
+    /* Numbers */
+    .num-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      margin-top: 64px;
+    }
+
+    .num-cell {
+      background: var(--bg2);
+      padding: 52px 40px;
+      border-right: 1px solid var(--border);
+    }
+
+    .num-cell:last-child {
+      border-right: none;
+    }
+
+    .num-big {
+      font-family: var(--ff);
+      font-size: 64px;
+      font-weight: 900;
+      letter-spacing: -4px;
+      line-height: 1;
+      color: var(--cobalt);
+      margin-bottom: 16px;
+    }
+
+    /* CTA */
+    .cta-wrap {
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    @media(max-width:1100px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 120px 24px 80px;
+        gap: 48px;
+        text-align: center;
+      }
+
+      .hero-badges,
+      .hero-actions {
+        justify-content: center;
+      }
+
+      .hero-mini-stats {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .hms-cell:nth-child(2) {
+        border-right: none;
+      }
+
+      .hms-cell:nth-child(n+3) {
+        border-top: 1px solid var(--border);
+      }
+
+      .strip-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .strip-cell:nth-child(4) {
+        border-right: none;
+      }
+
+      .strip-cell:nth-child(n+5) {
+        border-top: 1px solid var(--border);
+      }
+    }
+
+    @media(max-width:768px) {
+      .problem-grid {
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+
+      .feat-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .num-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .num-cell:nth-child(2) {
+        border-right: none;
+      }
+
+      .num-cell:nth-child(n+3) {
+        border-top: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+
+<body data-page="index">
+  <canvas id="fluid-canvas"
+    style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
+  <div id="_nav"></div>
+  <div class="page">
+
+    <!-- HERO -->
+    <section style="position:relative;overflow:hidden;">
+      <div class="hero">
+        <div>
+          <div class="hero-badges">
+            <div class="hero-tag">
+              <div class="pulse"></div>WEARABLE · EDGE AI · REAL-TIME
+            </div>
+            <div class="tribe-badge">TRIBE v2</div>
+          </div>
+          <h1 class="display-xl" style="margin-bottom:32px; font-size: clamp(56px, 7vw, 92px);">
+            <span class="hero-float">Study with</span><br>
+            <span class="hero-float hero-float-delay grad">your biology,</span><br>
+            <span class="hero-float hero-float-delay2 muted">not against it.</span>
+          </h1>
+          <p
+            style="font-size:19px;font-weight:400;color:var(--ink3);line-height:1.76;max-width:520px; margin: 0 auto 0 0;">
+            StudyTwin fuses skin conductance, heart rate variability, and blink rate
+            into a real-time Cognitive Load Index — then adapts your session
+            automatically. Not a timer. A closed loop.
+          </p>
+          <div class="hero-actions">
+            <a href="dashboard.html" class="btn-primary" style="padding: 14px 32px; font-size: 15px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              Open Dashboard
+            </a>
+            <a href="how-it-works.html" class="btn-ghost" style="padding: 14px 28px; font-size: 15px;">How it works
+              →</a>
+          </div>
+          <div class="hero-mini-stats">
+            <div class="hms-cell">
+              <div class="data-label" style="margin-bottom:12px;">Load Index</div>
+              <div class="data-val" id="h-cli">42</div>
+            </div>
+            <div class="hms-cell">
+              <div class="data-label" style="margin-bottom:12px;">Heart rate</div>
+              <div class="data-val" style="color:var(--ink2)" id="h-hr">68 bpm</div>
+            </div>
+            <div class="hms-cell">
+              <div class="data-label" style="margin-bottom:12px;">Blink rate</div>
+              <div class="data-val" style="color:var(--ink2)" id="h-blink">13.8 /min</div>
+            </div>
+            <div class="hms-cell">
+              <div class="data-label" style="margin-bottom:12px;">Regions Mapped</div>
+              <div class="data-val" style="color:var(--amber)">3</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: 3D Brain -->
+        <div class="brain-wrap">
+          <canvas id="brain-canvas"></canvas>
+          <div class="brain-hud-tl">
+            <div class="data-label" style="margin-bottom:8px;">Cognitive Load</div>
+            <div
+              style="font-family:var(--ff);font-size:52px;font-weight:900;line-height:1;transition:color .6s;letter-spacing:-3px;"
+              id="hud-cli">42</div>
+            <div class="data-label" style="margin-top:6px;">out of 100</div>
+          </div>
+          <div class="brain-hud-tr">
+            <span class="badge badge-focused" id="hud-badge">Focused</span>
+          </div>
+          <div class="brain-hud-bl">
+            <div>
+              <div class="data-label" style="margin-bottom:6px;">Accuracy</div>
+              <div class="data-value" id="hud-accuracy">83.4%</div>
+            </div>
+            <div>
+              <div class="data-label" style="margin-bottom:6px;">Latency</div>
+              <div class="data-value" id="hud-latency">47ms</div>
+            </div>
+          </div>
+          <div class="brain-hint">INTERACTIVE NEURAL TWIN</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIVE STRIP -->
+    <div class="strip">
+      <div class="strip-grid">
+        <div class="strip-cell">
+          <div class="data-label" style="margin-bottom:10px;">Heart Rate</div>
+          <div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--ink2);letter-spacing:-.5px;"
+            id="s-hr">68 bpm</div>
+        </div>
+        <div class="strip-cell">
+          <div class="data-label" style="margin-bottom:10px;">HRV RMSSD</div>
+          <div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--ink2);letter-spacing:-.5px;"
+            id="s-hrv">52.4 ms</div>
+        </div>
+        <div class="strip-cell">
+          <div class="data-label" style="margin-bottom:10px;">Skin Response</div>
+          <div style="font-family:var(--ff);font-size:20px;font-weight:700;" id="s-gsr">14.2%</div>
+        </div>
+        <div class="strip-cell">
+          <div class="data-label" style="margin-bottom:10px;">Blink Rate</div>
+          <div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--ink2);letter-spacing:-.5px;"
+            id="s-blink">13.8/min</div>
+        </div>
+        <div class="strip-cell">
+          <div class="data-label" style="margin-bottom:10px;">SpO₂</div>
+          <div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--emerald);letter-spacing:-.5px;"
+            id="s-spo2">98%</div>
+        </div>
+        <div class="strip-cell">
+          <div class="data-label" style="margin-bottom:10px;">Load Index</div>
+          <div style="font-family:var(--ff);font-size:20px;font-weight:700;" id="s-cli">42/100</div>
+        </div>
+        <div class="strip-cell">
+          <div class="data-label" style="margin-bottom:10px;">Executive Load</div>
+          <div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--amber);" id="s-exec">82%</div>
+        </div>
+        <div class="strip-cell">
+          <div class="data-label" style="margin-bottom:10px;">Language Load</div>
+          <div style="font-family:var(--ff);font-size:20px;font-weight:700;color:var(--cobalt);" id="s-lang">67%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROBLEM -->
+    <section class="section">
+      <div class="w">
+        <div class="eyebrow" data-reveal>The problem</div>
+        <div class="problem-grid">
+          <div>
+            <h2 class="display-lg" data-reveal style="margin-bottom:28px;">Your brain hits a wall.<br><span
+                class="muted">You don't know when.</span></h2>
+            <p data-reveal style="font-size:17px;color:var(--ink3);line-height:1.8;margin-bottom:20px;">After 40–50
+              minutes of intense study, your brain enters cognitive overload. New information stops being retained — but
+              you keep reading the same paragraph.</p>
+            <p data-reveal style="font-size:17px;color:var(--ink3);line-height:1.8;margin-bottom:40px;">Standard timers
+              can't see this. Only your body can — and StudyTwin is the first wearable that listens.</p>
+            <a href="how-it-works.html" class="btn-ghost" data-reveal>How StudyTwin detects this →</a>
+          </div>
+          <div data-reveal-group>
+            <div class="pfact" data-reveal>
+              <div class="pfact-n">40<span style="font-size:24px;font-weight:600;">min</span></div>
+              <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Average time before cognitive saturation
+                begins in intense study sessions</p>
+            </div>
+            <div class="pfact" data-reveal>
+              <div class="pfact-n">23<span style="font-size:24px;font-weight:600;">%</span></div>
+              <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Higher recall scores when students receive
+                real-time cognitive load feedback</p>
+            </div>
+            <div class="pfact" data-reveal style="border-left-color:var(--border2);">
+              <div class="pfact-n" style="color:var(--ink4);">0</div>
+              <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Consumer wearables that close the loop and
+                adapt your schedule in real time</p>
+            </div>
+            <div class="pfact" data-reveal style="border-left-color:var(--amber);">
+              <div class="pfact-n" style="color:var(--amber);">3</div>
+              <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Distinct brain circuits that StudyTwin tracks
+                individually — prefrontal executive, language, and visual processing networks</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="section" style="background:var(--bg3);">
+      <div class="w">
+        <div class="eyebrow" data-reveal>Capabilities</div>
+        <h2 class="display-lg" data-reveal style="max-width:600px; margin-bottom: 48px;">Everything your brain
+          needs.<br><span class="muted">Nothing it doesn't.</span></h2>
+        <div class="feat-grid" data-reveal-group>
+          <div class="feat" data-reveal>
+            <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB"
+                stroke-width="2" stroke-linecap="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              </svg></div>
+            <h3>Reads your body, every second</h3>
+            <p>GSR, HRV, and blink rate fused into one number — your Cognitive Load Index — via IEEE-validated weighted
+              fusion.</p>
+          </div>
+          <div class="feat" data-reveal>
+            <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB"
+                stroke-width="2" stroke-linecap="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg></div>
+            <h3>Adapts your session automatically</h3>
+            <p>When load rises, StudyTwin shortens your session, triggers a break, or reduces task difficulty. No manual
+              input.</p>
+          </div>
+          <div class="feat" data-reveal>
+            <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB"
+                stroke-width="2" stroke-linecap="round">
+                <path
+                  d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+              </svg></div>
+            <h3>AI runs on the device</h3>
+            <p>The 1D-CNN runs on the ESP32 at 47ms latency. No cloud dependency. Your biosignals never leave the
+              hardware.</p>
+          </div>
+          <div class="feat" data-reveal>
+            <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB"
+                stroke-width="2" stroke-linecap="round">
+                <circle cx="12" cy="7" r="4" />
+                <path d="M5.5 21c0-3.87 2.91-7 6.5-7s6.5 3.13 6.5 7" />
+              </svg></div>
+            <h3>Calibrated to your baseline</h3>
+            <p>60-second personal calibration. Every reading is relative to you — not population averages.</p>
+          </div>
+          <div class="feat" data-reveal>
+            <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB"
+                stroke-width="2" stroke-linecap="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <path d="M9 9h6M9 12h6M9 15h4" />
+              </svg></div>
+            <h3>Plain-language AI insights</h3>
+            <p>After each session, AI generates a summary of when you were sharp, when you drifted, and what to adjust.
+            </p>
+          </div>
+          <div class="feat" data-reveal>
+            <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB"
+                stroke-width="2" stroke-linecap="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg></div>
+            <h3>Learns your rhythms over time</h3>
+            <p>Session history reveals when you peak, fade, and which tasks tax you most — then schedules around that.
+            </p>
+          </div>
+          <div class="feat" data-reveal style="border-left: 4px solid var(--amber);">
+            <div class="feat-icon" style="background: rgba(217, 119, 6, 0.08); border-color: rgba(217, 119, 6, 0.2);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"
+                stroke-linecap="round">
+                <path
+                  d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.48ZM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.48Z" />
+              </svg></div>
+            <h3>Brain-Region Aware Routing</h3>
+            <p>When executive load peaks, TRIBE v2 reroutes you to visual material. When language circuits saturate, it
+              surfaces numerical content. Not just a break — a smarter redirect.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NUMBERS -->
+    <section class="section">
+      <div class="w">
+        <div class="eyebrow" data-reveal>Validated results</div>
+        <h2 class="display-lg" data-reveal>Precision you can measure.</h2>
+        <div class="num-grid" data-reveal-group>
+          <div class="num-cell" data-reveal>
+            <div class="num-big"><span class="counter" data-to="83">0</span><span>%</span></div>
+            <p style="font-size:15px;color:var(--ink3);line-height:1.6;">CLI accuracy vs NASA-TLX ground truth · n=15
+            </p>
+          </div>
+          <div class="num-cell" data-reveal>
+            <div class="num-big" style="color:var(--amber);"><span class="counter" data-to="47">0</span><span
+                style="color:var(--amber); font-size: 32px;">ms</span></div>
+            <p style="font-size:15px;color:var(--ink3);line-height:1.6;">1D-CNN inference on ESP32-WROOM</p>
+          </div>
+          <div class="num-cell" data-reveal>
+            <div class="num-big" style="color:var(--ink2);"><span class="counter" data-to="3">0</span></div>
+            <p style="font-size:15px;color:var(--ink3);line-height:1.6;">Independent biomarkers fused: GSR, HRV, blink
+            </p>
+          </div>
+          <div class="num-cell" data-reveal>
+            <div class="num-big" style="color:var(--emerald);"><span class="counter" data-to="412">0</span><span
+                style="color:var(--emerald);font-size:32px;">ms</span></div>
+            <p style="font-size:15px;color:var(--ink3);line-height:1.6;">End-to-end latency · below 500ms threshold</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section" style="background:var(--bg3);">
+      <div class="w">
+        <div class="cta-wrap" data-reveal>
+          <h2 class="display-lg" style="margin-bottom:28px;">Ready to study<br><span class="grad">smarter?</span></h2>
+          <p style="font-size:18px;color:var(--ink3);line-height:1.76;margin-bottom:48px;">Open your live dashboard, see
+            your cognitive state in real time, and let StudyTwin handle the rest.</p>
+          <div style="display:flex;justify-content:center;gap:16px; flex-wrap: wrap;">
+            <a href="dashboard.html" class="btn-primary" style="padding: 14px 36px; font-size: 15px;">Open Dashboard</a>
+            <a href="brain-map.html" class="btn-ghost" style="padding: 14px 32px; font-size: 15px;">Explore Brain
+              Intelligence →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+  <hr />
+  <div id="_footer"></div>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="aura.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Aura Background
+    let aura = null;
+    window.addEventListener('load', () => {
+      aura = new AuraBackground('fluid-canvas');
+    });
+
+    // Counter animation
+    function runCounters() {
+      document.querySelectorAll('.counter').forEach(el => {
+        const to = +el.dataset.to, dur = 1600; let start = null
+        const step = ts => {
+          if (!start) start = ts; const p = Math.min((ts - start) / dur, 1)
+          el.textContent = Math.round((1 - Math.pow(1 - p, 4)) * to)
+          if (p < 1) requestAnimationFrame(step)
+        }
+        const io = new IntersectionObserver(en => { if (en[0].isIntersecting) { requestAnimationFrame(step); io.disconnect() } }, { threshold: .3 })
+        io.observe(el)
+      })
+    }
+    runCounters()
+
+    // Brain
+    let brain3d = null
+    loadThree().then(THREE => {
+      console.log("Neural Twin Engine Ready")
+      brain3d = initAntigravityBrain(THREE, document.getElementById('brain-canvas'))
+    }).catch(err => console.error(err))
+
+    // Wire DOM — immediate population, never blank
+    ST.subscribe(data => {
+      const update = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
+      const setCol = (id, c) => { const el = document.getElementById(id); if (el) el.style.color = c }
+      const col = ST.color(data.cli)
+
+      // Brain HUD
+      update('hud-cli', Math.round(data.cli)); setCol('hud-cli', col)
+      update('hud-accuracy', data.accuracy)
+      update('hud-latency', data.latency)
+      const badge = document.getElementById('hud-badge')
+      if (badge) { badge.textContent = ST.label(data.state); badge.className = 'badge badge-' + data.state.replace('overloaded', 'over') }
+
+      // Hero mini-stats
+      update('h-cli', Math.round(data.cli)); setCol('h-cli', col)
+      update('h-hr', data.hr + ' bpm')
+      update('h-blink', data.blink + ' /min')
+
+      // Telemetry strip
+      update('s-hr', data.hr + ' bpm'); update('s-hrv', data.hrv + ' ms')
+      update('s-gsr', data.gsrDev + '%'); setCol('s-gsr', col)
+      update('s-blink', data.blink + '/min'); update('s-spo2', data.spo2 + '%')
+      update('s-cli', Math.round(data.cli) + '/100'); setCol('s-cli', col)
+
+      // Brain color
+      if (brain3d) {
+        brain3d.setColor(ST.stateColor(data.state))
+        if (brain3d.triggerNeuralSpike) brain3d.triggerNeuralSpike(data.cli)
+      }
+
+      // Aura color
+      if (aura) {
+        aura.setCLI(data.cli)
+      }
+    })
+
+    // Wire TRIBE data
+    TRIBE.subscribe(data => {
+      const update = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
+      update('s-exec', data.executive + '%')
+      update('s-lang', data.language + '%')
+    })
+
+  </script>
 </body>
+
 </html>
+
+
+// ── LANDING PAGE BLINK WIDGET ─────────────────────────────────────────────
+// Only runs if Firebase is already initialised (it is, from your existing app.js)
+(function initBlinkWidget() {
+// Poll for Firebase auth (auth resolves asynchronously)
+const maxWait = 8000;
+const interval = 500;
+let waited = 0;
+
+const poller = setInterval(() => {
+waited += interval;
+const user = firebase.auth().currentUser;
+
+if (user || waited >= maxWait) {
+clearInterval(poller);
+if (!user) return; // not logged in, widget stays empty
+
+const uid = user.uid;
+const liveRef = firebase.database().ref(`/sessions/${uid}/live`);
+
+liveRef.on("value", snap => {
+const d = snap.val();
+if (!d) return;
+
+const rate = d.blink_rate_per_min;
+const score = d.blink_score;
+
+if (rate === undefined && score === undefined) return;
+
+// Update landing page stats
+const elRate = document.getElementById("lp-blink-rate");
+const elScore = document.getElementById("lp-blink-score");
+const elState = document.getElementById("lp-blink-state");
+const elCamR = document.getElementById("lp-cam-rate");
+const elCamS = document.getElementById("lp-cam-state");
+const camRing = document.getElementById("cam-ring");
+
+if (elRate && rate !== undefined) elRate.textContent = `${Math.round(rate)}`;
+if (elScore && score !== undefined) elScore.textContent = `${Math.round(score)}`;
+
+let stateLabel = "—";
+let stateColor = "#4A5568";
+if (rate !== undefined) {
+if (rate >= 15) { stateLabel = "Calm"; stateColor = "#10B981"; }
+else if (rate >= 10) { stateLabel = "Focused"; stateColor = "#6BA3FF"; }
+else if (rate >= 7) { stateLabel = "Elevated"; stateColor = "#F59E0B"; }
+else { stateLabel = "Overloaded";stateColor = "#EF4444"; }
+}
+
+if (elState) { elState.textContent = stateLabel; elState.style.color = stateColor; }
+if (elCamR && rate !== undefined) elCamR.textContent = `${Math.round(rate)} /min`;
+if (elCamS) { elCamS.textContent = stateLabel; elCamS.style.color = stateColor; }
+if (camRing) camRing.classList.add("active");
+});
+}
+}, interval);
+})();
