@@ -1,10 +1,33 @@
 {
   "hosting": {
-    "public": ".",
+    "public": "dist",
     "ignore": [
       "firebase.json",
+      ".firebaserc",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/venv_blink/**",
+      "**/env/**",
+      "**/server/**",
+      "**/*.exe",
+      "**/*.bin",
+      "**/*.sh",
+      "**/*.py",
+      "**/*.ps1",
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.pyc",
+      "**/__pycache__/**",
+      "**/src/**",
+      "package.json",
+      "package-lock.json",
+      "tsconfig.json",
+      "vite.config.ts",
+      "requirements_blink.txt",
+      "serviceAccountKey.json",
+      "metadata.json",
+      "README.md"
     ]
   }
 }

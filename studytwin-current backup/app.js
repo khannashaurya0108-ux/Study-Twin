@@ -63,6 +63,42 @@ const DATA_SOURCE = 'firebase'
     {firebase_push_id}: { same fields as /live }
 */
 
+let ST_prevCLI = null;
+
+function getBlinkScore() {
+  const score = window.BLINK_SCORE;
+  if (typeof score === "number" && !isNaN(score)) {
+    return Math.max(0, Math.min(100, score));
+  }
+  return 50;
+}
+
+function computeCLI(gsr_score, hrv_score) {
+  const blink_score = getBlinkScore();
+  const raw_cli = (gsr_score * 0.50) + (hrv_score * 0.35) + (blink_score * 0.15);
+  const alpha = 0.28;
+  const prev = (typeof ST_prevCLI === "number") ? ST_prevCLI : raw_cli;
+  const smoothed = prev * (1 - alpha) + raw_cli * alpha;
+  ST_prevCLI = smoothed;
+  return Math.round(smoothed);
+}
+
+function classifyState(cli) {
+  if (cli < 26) return "calm";
+  if (cli < 56) return "focused";
+  if (cli < 78) return "elevated";
+  return "overloaded";
+}
+
+function mapGSRtoScore(gsr_z) {
+  const gsrDev = gsr_z * 100;
+  return Math.min(100, Math.max(0, (gsrDev / 82) * 100));
+}
+
+function mapHRVtoScore(rmssd) {
+  return Math.max(0, Math.min(100, 100 - ((rmssd - 18) / 70) * 100));
+}
+
 function connectFirebase() {
   const loadScript = (src) => new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) return resolve();
@@ -120,13 +156,19 @@ function connectFirebase() {
         db.ref('/sessions/' + user.uid + '/live').on('value', (snapshot) => {
           const data = snapshot.val();
           if (data && ST._subs) {
+            const gsr_score = data.gsr_z !== undefined ? mapGSRtoScore(data.gsr_z) : 50;
+            const hrv_score = data.rmssd !== undefined ? mapHRVtoScore(data.rmssd) : 50;
+
+            const cli = computeCLI(gsr_score, hrv_score);
+            const state = classifyState(cli);
+
             ST._subs.forEach(fn => fn({
               ...ST.get(),
               gsrRaw: data.gsr_raw,
-              gsrDev: data.gsr_z * 100,
+              gsrDev: data.gsr_z !== undefined ? data.gsr_z * 100 : 0,
               hrv: data.rmssd,
-              cli: data.cli_score,
-              state: data.cli_state,
+              cli: cli,
+              state: state,
               battery: data.battery
             }));
           }
@@ -168,25 +210,14 @@ const ST = (() => {
     const gsrS = Math.min(100, (gsr / 82) * 100)
     const hrvS = Math.max(0, 100 - ((hrv - 18) / 70) * 100)
     const blS = bl < 10 ? 82 : Math.max(0, 100 - (bl / 24) * 62)
-    // ── Blink sub-score ─────────────────────────────────────────────────────
-    // Read from blink_server.py via window.BLINK_SCORE (set by blink-detection.js)
-    const blink_score = (typeof window.BLINK_SCORE === 'number')
-                        ? window.BLINK_SCORE
-                        : 50;
-
     // Also use real blink rate if available
-    const blinkRateReal = (
-      window.BlinkDetector &&
-      window.BlinkDetector.ready() &&
-      window.BlinkDetector.hasCam()
-    ) ? window.BlinkDetector.getRate() : Math.round(bl * 10) / 10
+    const blinkRateReal = (typeof window.BLINK_RATE === 'number')
+                        ? window.BLINK_RATE
+                        : Math.round(bl * 10) / 10;
 
-    // IEEE §V weighted fusion: CLI = GSR(0.50) + HRV(0.35) + Blink(0.15)
-    const raw = gsrS * 0.50 + hrvS * 0.35 + blink_score * 0.15
-    // EMA smoothing
-    const cli = Math.round(_d.cli * (1 - ALPHA) + raw * ALPHA)
+    const cli = computeCLI(gsrS, hrvS);
     _d = {
-      cli, state: stateOf(cli), hr,
+      cli, state: classifyState(cli), hr,
       hrv: Math.round(hrv * 10) / 10,
       spo2: Math.round(wander(_d.spo2, 95, 100, .2) * 10) / 10,
       gsrRaw: Math.round(1800 + gsr * 14),

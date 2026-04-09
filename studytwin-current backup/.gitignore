@@ -74,3 +74,5 @@ serviceAccountKey.json
 __pycache__/
 *.pyc
 .env
+venv_blink/
+dist/

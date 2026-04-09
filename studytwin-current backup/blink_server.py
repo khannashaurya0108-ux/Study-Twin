@@ -178,11 +178,13 @@ def detection_loop():
         # ── Emit summary to dashboard once per second ─────────────────────
         if now - last_emit >= 1.0:
             payload = {
-                'blink_count':  state['blink_count'],
-                'blink_rate':   state['blink_rate'],
-                'blink_score':  state['blink_score'],
-                'ear':          state['ear'],
-                'calibrated':   state['calibrated'],
+                'blink_count':        state['blink_count'],
+                'total_blinks':       state['blink_count'],       # alias for blink.html
+                'blink_rate':         state['blink_rate'],
+                'blink_rate_per_min': state['blink_rate'],        # alias for blink.html
+                'blink_score':        state['blink_score'],
+                'ear':                state['ear'],
+                'calibrated':         state['calibrated'],
             }
             socketio.emit('blink_data', payload)
             last_emit = now

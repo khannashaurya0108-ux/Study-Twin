@@ -110,8 +110,8 @@
       border-right: none;
     }
 
-    < !-- ── BLINK MONITOR PREVIEW STRIP ───────────────────────────────────────── --><section class="blink-strip" id="blink-preview"><div class="blink-strip-inner"><div class="blink-strip-text"><div class="blink-strip-tag">Biosignal Channel 3 · 15% CLI Weight</div><h3 class="blink-strip-title">Blink Rate Detection</h3><p class="blink-strip-desc">Your blink reflex is suppressed by the basal ganglia during high attentional demand. StudyTwin's Python script detects this in real time — no extra hardware required.
- </p><div class="blink-stat-row"><div class="blink-stat"><div class="blink-stat-val" id="lp-blink-rate">—</div><div class="blink-stat-lbl">Blinks/min</div></div><div class="blink-stat"><div class="blink-stat-val" id="lp-blink-score">—</div><div class="blink-stat-lbl">CLI Score</div></div><div class="blink-stat"><div class="blink-stat-val" id="lp-blink-state">—</div><div class="blink-stat-lbl">State</div></div></div><a href="blink.html" class="blink-strip-cta">Open Blink Monitor →</a></div>< !-- Small camera feed column --><div class="blink-cam-col"><div class="cam-frame" id="cam-frame"><div class="cam-inner" id="cam-inner"><div class="cam-placeholder" id="cam-placeholder"><div class="cam-icon">◉</div><div class="cam-text">Camera starts when<br>blink_detector.py runs</div></div>< !-- Live blink overlay stats (shown over the camera column even without a real feed) --><div class="cam-overlay" id="cam-overlay"><div class="cam-stat-row"><span class="cam-stat-badge" id="lp-cam-rate">— /min</span><span class="cam-stat-badge" id="lp-cam-state" style="color:var(--accent)">No signal</span></div></div></div>< !-- Animated border ring --><div class="cam-ring" id="cam-ring"></div></div></div></div></section>
+
+
 
     /* Brain panel */
     .brain-wrap {
@@ -471,6 +471,52 @@
             </div>
           </div>
           <div class="brain-hint">INTERACTIVE NEURAL TWIN</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── BLINK MONITOR PREVIEW STRIP ── -->
+    <section class="blink-strip" id="blink-preview">
+      <div class="blink-strip-inner">
+        <div class="blink-strip-text">
+          <div class="blink-strip-tag">Biosignal Channel 3 · 15% CLI Weight</div>
+          <h3 class="blink-strip-title">Blink Rate Detection</h3>
+          <p class="blink-strip-desc">Your blink reflex is suppressed by the basal ganglia during high attentional demand. StudyTwin&#39;s Python script detects this in real time &mdash; no extra hardware required.</p>
+          <div class="blink-stat-row">
+            <div class="blink-stat">
+              <div class="blink-stat-val" id="lp-blink-rate">&mdash;</div>
+              <div class="blink-stat-lbl">Blinks/min</div>
+            </div>
+            <div class="blink-stat">
+              <div class="blink-stat-val" id="lp-blink-score">&mdash;</div>
+              <div class="blink-stat-lbl">CLI Score</div>
+            </div>
+            <div class="blink-stat">
+              <div class="blink-stat-val" id="lp-blink-state">&mdash;</div>
+              <div class="blink-stat-lbl">State</div>
+            </div>
+          </div>
+          <a href="blink.html" class="blink-strip-cta">Open Blink Monitor &rarr;</a>
+        </div>
+        <!-- Small camera feed column -->
+        <div class="blink-cam-col">
+          <div class="cam-frame" id="cam-frame">
+            <div class="cam-inner" id="cam-inner">
+              <div class="cam-placeholder" id="cam-placeholder">
+                <div class="cam-icon">&#9673;</div>
+                <div class="cam-text">Camera starts when<br>blink_detector.py runs</div>
+              </div>
+              <!-- Live blink overlay stats -->
+              <div class="cam-overlay" id="cam-overlay">
+                <div class="cam-stat-row">
+                  <span class="cam-stat-badge" id="lp-cam-rate">&mdash; /min</span>
+                  <span class="cam-stat-badge" id="lp-cam-state" style="color:var(--accent)">No signal</span>
+                </div>
+              </div>
+            </div>
+            <!-- Animated border ring -->
+            <div class="cam-ring" id="cam-ring"></div>
+          </div>
         </div>
       </div>
     </section>
