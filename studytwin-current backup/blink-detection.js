@@ -1,47 +1,73 @@
 /* ══════════════════════════════════════════════════════════════
    STUDYTWIN — MediaPipe Blink Detection Module
-   FIXED: Works with OBS Virtual Camera, DroidCam, and real webcams
-   Root cause of old bug: facingMode:'user' breaks virtual cameras
+   1:1 parity with blink_server.py (Python) for identical accuracy
+   Pixel-space EAR · EMA smoothing · 300ms cooldown · 3-frame gate
 ══════════════════════════════════════════════════════════════ */
 
 const BlinkDetector = (() => {
 
-  const LEFT_EYE = { p1: 33, p2: 160, p3: 158, p4: 133, p5: 153, p6: 144 }
-  const RIGHT_EYE = { p1: 362, p2: 385, p3: 387, p4: 263, p5: 373, p6: 380 }
+  // ── Eye landmark indices — IDENTICAL to Python blink_server.py ──
+  // Python: RIGHT_EYE_EAR = [33, 159, 158, 133, 153, 145]
+  // Python: LEFT_EYE_EAR  = [362, 380, 374, 263, 386, 385]
+  // Order: [p1, p2, p3, p4, p5, p6]
+  // EAR = (||p2-p6|| + ||p3-p5||) / (2 * ||p1-p4||)
+  const LEFT_EYE  = [362, 380, 374, 263, 386, 385]
+  const RIGHT_EYE = [33,  159, 158, 133, 153, 145]
 
+  // ── State ──
   let _isReady = false
   let _isCalibrating = false
   let _calibFrames = 0
   let _calibEARs = []
-  let _earThreshold = 0.23
+  let _earThreshold = 0.285       // Python: EAR_THRESHOLD_DEFAULT = 0.285
+  let _earBaseline = 0.30
   let _consecLow = 0
-  let _blinkTimes = []
+  let _totalBlinks = 0
+  let _countStartTime = 0
   let _currentRate = 0
   let _currentScore = 50
   let _currentEAR = 0
+  let _smoothedEAR = -1           // EMA state (-1 = uninitialized)
+  let _lastBlinkTime = 0          // cooldown timestamp
   let _faceDetected = false
   let _cameraGranted = false
   let _faceMesh = null
   let _camera = null
   let _videoEl = null
+  let _externalVideo = false   // true when using a video element provided by the page
   let _subscribers = []
   let _lastFBWrite = 0
+  let _frameCount = 0
+  let _resultCount = 0
 
-  const dist3d = (a, b) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
+  // ── PIXEL-SPACE EAR — exact clone of Python compute_ear() ──
+  // Python: pts = [[lm[i].x * img_w, lm[i].y * img_h] for i in indices]
+  // We must scale normalized (0-1) landmarks to pixel coordinates
+  // because EAR is aspect-ratio sensitive: a 640x480 video gives
+  // different normalized-space EAR than pixel-space EAR by factor H/W.
+  function computeEAR(lm, eyeIndices, w, h) {
+    const px = (idx) => [lm[idx].x * w, lm[idx].y * h]
+    const p1 = px(eyeIndices[0]), p2 = px(eyeIndices[1])
+    const p3 = px(eyeIndices[2]), p4 = px(eyeIndices[3])
+    const p5 = px(eyeIndices[4]), p6 = px(eyeIndices[5])
 
-  function computeEAR(lm, eye) {
-    const d26 = dist3d(lm[eye.p2], lm[eye.p6])
-    const d35 = dist3d(lm[eye.p3], lm[eye.p5])
-    const d14 = dist3d(lm[eye.p1], lm[eye.p4])
-    if (d14 < 0.0001) return 0.25
-    return (d26 + d35) / (2 * d14)
+    const dist = (a, b) => Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
+    const A = dist(p2, p6)   // ||p2-p6||  vertical
+    const B = dist(p3, p5)   // ||p3-p5||  vertical
+    const C = dist(p1, p4)   // ||p1-p4||  horizontal
+
+    return C < 1e-6 ? 0.30 : (A + B) / (2.0 * C)
   }
 
-  function rateToScore(rate) {
-    return Math.max(0, Math.min(100, 8 * (12 - rate)))
+  // ── Score formula — matches Python blink_rate_to_score() ──
+  function rateToScore(bpm) {
+    if (bpm <= 0) return 0
+    return Math.max(0, Math.min(100, Math.round(100 - Math.abs(bpm - 15) * 8)))
   }
 
   function _onResults(results) {
+    _resultCount++
+
     if (!results.multiFaceLandmarks?.length) {
       _faceDetected = false
       _broadcast()
@@ -56,49 +82,78 @@ const BlinkDetector = (() => {
 
     const lm = results.multiFaceLandmarks[0]
 
-    const leftEAR = computeEAR(lm, LEFT_EYE)
-    const rightEAR = computeEAR(lm, RIGHT_EYE)
-    const avgEAR = (leftEAR + rightEAR) / 2
-    _currentEAR = avgEAR
+    // Get video dimensions for pixel-space scaling
+    const w = (_videoEl && _videoEl.videoWidth)  || 640
+    const h = (_videoEl && _videoEl.videoHeight) || 480
 
+    // Compute EAR in pixel space — identical to Python
+    const leftEAR  = computeEAR(lm, LEFT_EYE, w, h)
+    const rightEAR = computeEAR(lm, RIGHT_EYE, w, h)
+    const rawEAR   = (leftEAR + rightEAR) / 2.0
+
+    // Apply Exponential Moving Average for noise suppression
+    // α = 0.4 gives fast response (reacts in 2-3 frames) while killing jitter
+    const EMA_ALPHA = 0.4
+    if (_smoothedEAR < 0) _smoothedEAR = rawEAR   // initialize on first frame
+    _smoothedEAR = _smoothedEAR * (1 - EMA_ALPHA) + rawEAR * EMA_ALPHA
+    _currentEAR = _smoothedEAR
+
+    // ── CALIBRATION PHASE ──
     if (_isCalibrating) {
-      _calibEARs.push(avgEAR)
+      // Collect RAW (unsmoothed) EAR for clean baseline calculation
+      _calibEARs.push(rawEAR)
       _calibFrames++
       const pct = Math.min(100, Math.round((_calibFrames / 180) * 100))
       _updateCalibUI(pct)
 
       if (_calibFrames >= 180) {
-        const mean = _calibEARs.reduce((a, b) => a + b, 0) / _calibEARs.length
-        const variance = _calibEARs.reduce((a, b) => a + (b - mean) ** 2, 0) / _calibEARs.length
-        const std = Math.sqrt(variance)
-        _earThreshold = Math.max(0.12, mean - 0.3 * std)
+        // Match Python exactly: 60th percentile as baseline
+        _calibEARs.sort((a, b) => a - b)
+        _earBaseline = _calibEARs[Math.floor(_calibEARs.length * 0.6)]
+
+        // Match Python: threshold = max(0.18, min(0.35, baseline * 0.75))
+        _earThreshold = Math.max(0.18, Math.min(0.35, _earBaseline * 0.75))
+
         _isCalibrating = false
         _isReady = true
-        console.log(`[StudyTwin Blink] EAR calibrated ✓ threshold=${_earThreshold.toFixed(4)}`)
+        _countStartTime = Date.now()
+        _smoothedEAR = _earBaseline  // reset smoother to baseline
+
+        console.log(`[StudyTwin Blink] Calibrated ✓  baseline=${_earBaseline.toFixed(4)}  threshold=${_earThreshold.toFixed(4)}  video=${w}x${h}`)
+
         _updateCalibUI(100)
+        const mean = _calibEARs.reduce((a, b) => a + b, 0) / _calibEARs.length
         document.dispatchEvent(new CustomEvent('blinkCalibrationComplete', {
-          detail: { threshold: _earThreshold, mean, std }
+          detail: { threshold: _earThreshold, mean, std: 0 }
         }))
       }
+      // Always broadcast during calibration so UI updates
+      _broadcast()
       return
     }
 
     if (!_isReady) return
 
-    if (avgEAR < _earThreshold) {
+    // ── BLINK DETECTION — matches Python exactly ──
+    const now = Date.now()
+
+    if (_smoothedEAR < _earThreshold) {
       _consecLow++
     } else {
-      if (_consecLow >= 2) {
-        _blinkTimes.push(Date.now())
-        document.dispatchEvent(new CustomEvent('blinkDetected', { detail: { ear: avgEAR } }))
+      // Python: if frame_ctr >= CONSEC_FRAMES (3): count blink
+      // Added: 300ms cooldown (humans blink 15-20x/min ≈ one every 3-4 seconds)
+      if (_consecLow >= 3 && (now - _lastBlinkTime) > 300) {
+        _totalBlinks++
+        _lastBlinkTime = now
+        document.dispatchEvent(new CustomEvent('blinkDetected', { detail: { ear: _smoothedEAR } }))
       }
       _consecLow = 0
     }
 
-    const now = Date.now()
-    _blinkTimes = _blinkTimes.filter(t => now - t < 60000)
-
-    _currentRate = _blinkTimes.length
+    // ── RATE CALCULATION — matches Python ──
+    // Python: blink_rate = round(state['blink_count'] / elapsed_minutes, 1)
+    const elapsedMinutes = Math.max((now - _countStartTime) / 60000, 1 / 60)
+    _currentRate = Math.round((_totalBlinks / elapsedMinutes) * 10) / 10
     _currentScore = rateToScore(_currentRate)
 
     _broadcast()
@@ -152,10 +207,31 @@ const BlinkDetector = (() => {
     } catch (e) { /* silent */ }
   }
 
+  // ── Accept an external video element (avoids dual camera streams) ──
+  // Call this BEFORE start() to reuse an existing playing <video>
+  function acceptVideo(videoElement) {
+    if (!videoElement || !(videoElement instanceof HTMLVideoElement)) {
+      console.warn('[StudyTwin Blink] acceptVideo: invalid element')
+      return false
+    }
+    _videoEl = videoElement
+    _externalVideo = true
+    _cameraGranted = true
+    console.log('[StudyTwin Blink] Using external video element:', videoElement.id || '(no id)')
+    return true
+  }
+
   // ── THE KEY FIX: Camera request without facingMode ──────────
   // facingMode:'user' BREAKS OBS Virtual Camera and DroidCam.
   // Virtual cameras have no facing mode — browser rejects them.
   async function _requestCamera() {
+    // If an external video was already provided, skip camera acquisition
+    if (_externalVideo && _videoEl) {
+      _cameraGranted = true
+      console.log('[StudyTwin Blink] Skipping camera request — using external video')
+      return true
+    }
+
     try {
       // Step 1: enumerate all video devices (works even before permission)
       let preferredDeviceId = null
@@ -218,19 +294,31 @@ const BlinkDetector = (() => {
         throw lastError || new Error('All camera access attempts failed')
       }
 
-      // Step 3: Create hidden video element
+      // Step 3: Create video element for MediaPipe processing
+      // CRITICAL FIX: Modern browsers (2025+) throttle video decoding for
+      // elements that are offscreen, zero-sized, or fully transparent.
+      // We keep it inside the viewport at a real size but visually invisible.
       _videoEl = document.createElement('video')
       _videoEl.id = 'st-mediapipe-video'
+      _videoEl.setAttribute('width', '640')
+      _videoEl.setAttribute('height', '480')
       _videoEl.style.cssText = [
-        'position:fixed', 'top:-9999px', 'left:-9999px',
-        'width:1px', 'height:1px', 'opacity:0.001',
-        'pointer-events:none', 'z-index:-1'
+        'position:fixed', 'top:0', 'left:0',
+        'width:1px', 'height:1px',
+        'opacity:0.01',            // NOT 0 — browsers skip rendering at 0
+        'pointer-events:none',
+        'z-index:-9999',
+        'clip:rect(0,1px,1px,0)',  // visually clips to 1px but element is "visible"
+        'overflow:hidden'
       ].join(';')
       _videoEl.autoplay = true
       _videoEl.muted = true
       _videoEl.playsInline = true
       _videoEl.srcObject = stream
       document.body.appendChild(_videoEl)
+
+      // Ensure video actually starts playing
+      try { await _videoEl.play() } catch (e) { /* autoplay handles it */ }
 
       _cameraGranted = true
       console.log('[StudyTwin Blink] Camera access granted ✓')
@@ -311,27 +399,47 @@ const BlinkDetector = (() => {
 
     _faceMesh.onResults(_onResults)
 
-    if (typeof window.Camera !== 'undefined') {
-      _camera = new window.Camera(_videoEl, {
-        onFrame: async () => {
-          if (_faceMesh && _videoEl && _videoEl.readyState >= 2) {
-            await _faceMesh.send({ image: _videoEl })
-          }
-        },
-        width: 640,
-        height: 480
-      })
-      _camera.start()
-      console.log('[StudyTwin Blink] MediaPipe Camera loop started ✓')
-    } else {
-      const loop = async () => {
-        if (_faceMesh && _videoEl && _videoEl.readyState >= 2) {
-          await _faceMesh.send({ image: _videoEl })
+    // DO NOT use window.Camera here! 
+    // MediaPipe's window.Camera utility calls getUserMedia() under the hood,
+    // which would open a SECOND competing stream and break DroidCam.
+    // Instead, we use a requestAnimationFrame loop to continuously send frames
+    // from our already-active _videoEl to FaceMesh.
+    
+    console.log('[StudyTwin Blink] Using custom frame loop (bypassing MediaPipe Camera utility to prevent dual-streams)')
+    let _rafBusy = false
+    const loop = async () => {
+      // Modern browsers have requestVideoFrameCallback, fallback to rAF
+      if (!_rafBusy && _faceMesh && _videoEl && _videoEl.readyState >= 2) {
+        _rafBusy = true
+        _frameCount++
+        
+        if (_frameCount % 100 === 1) {
+          // Log less frequently, but confirm frames are flowing
+          console.log(`[StudyTwin Blink] Frame processing #${_frameCount} (video size: ${_videoEl.videoWidth}x${_videoEl.videoHeight})`)
         }
+        
+        try {
+          // Await ensures we don't pile up frames faster than they can process
+          await _faceMesh.send({ image: _videoEl })
+        } catch (e) {
+          console.warn('[StudyTwin Blink] send() error:', e.message)
+        }
+        _rafBusy = false
+      }
+      
+      // Keep the loop going
+      if (_videoEl && typeof _videoEl.requestVideoFrameCallback === 'function') {
+        _videoEl.requestVideoFrameCallback(loop)
+      } else {
         requestAnimationFrame(loop)
       }
-      requestAnimationFrame(loop)
-      console.log('[StudyTwin Blink] Using rAF fallback loop')
+    }
+    
+    // Start the loop
+    if (_videoEl && typeof _videoEl.requestVideoFrameCallback === 'function') {
+        _videoEl.requestVideoFrameCallback(loop)
+    } else {
+        requestAnimationFrame(loop)
     }
 
     return true
@@ -384,7 +492,7 @@ const BlinkDetector = (() => {
   const hasCam = () => _cameraGranted
   const isFaceTracked = () => _faceDetected
 
-  return { start, startCalibration, subscribe, getScore, getRate, ready, hasCam, isFaceTracked }
+  return { start, startCalibration, subscribe, getScore, getRate, ready, hasCam, isFaceTracked, acceptVideo }
 
 })()
 

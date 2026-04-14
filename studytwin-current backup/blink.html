@@ -996,6 +996,10 @@
       }
       bar.style.display = 'none';
 
+      // The local MediaPipe script now natively writes to Firebase and updates the UI via 'blinkUpdate'.
+      // We DO NOT want to listen to Firebase here, because if the user still has 'python blink_detector.py'
+      // running in the background, it will overwrite Firebase and cause the UI to flicker rapidly back and forth.
+      /*
       const liveRef = firebase.database().ref('/sessions/' + user.uid + '/live');
       liveRef.on('value', snap => {
         const d = snap.val();
@@ -1003,6 +1007,7 @@
           updateUI(d);
         }
       });
+      */
     });
 
     function getStateInfo(rate) {
@@ -1096,6 +1101,34 @@
           wrapper.classList.add('active');
           btn.innerHTML = '<span class="pulse-cam" style="animation: pulse-red 2s infinite;"></span> Camera Active';
           btn.disabled = true;
+
+          // ── CRITICAL FIX: Share this SAME video element with BlinkDetector ──
+          // This avoids creating a second camera stream (which breaks DroidCam
+          // and virtual cameras that only support one stream at a time).
+          if (typeof BlinkDetector !== "undefined") {
+            // Wait for the video to have actual frames before feeding to BlinkDetector
+            video.addEventListener('loadeddata', function _onLoaded() {
+              video.removeEventListener('loadeddata', _onLoaded);
+              console.log('[Blink Page] Video ready — feeding to BlinkDetector via acceptVideo()');
+              console.log('[Blink Page] Video size:', video.videoWidth, 'x', video.videoHeight);
+              BlinkDetector.acceptVideo(video);
+              BlinkDetector.start().then(function (ok) {
+                if (ok) {
+                  console.log('[Blink Page] BlinkDetector started with shared video ✓');
+                } else {
+                  console.warn('[Blink Page] BlinkDetector.start() returned false');
+                }
+              });
+            });
+            // If the video already has data (e.g. from cache), fire immediately
+            if (video.readyState >= 2) {
+              console.log('[Blink Page] Video already loaded — feeding to BlinkDetector immediately');
+              BlinkDetector.acceptVideo(video);
+              BlinkDetector.start().then(function (ok) {
+                if (ok) console.log('[Blink Page] BlinkDetector started with shared video ✓');
+              });
+            }
+          }
         })
         .catch(err => {
           console.error('[Blink] Camera error:', err.name, err.message);
@@ -1306,16 +1339,14 @@
       console.log("[Blink Page] Calibration complete — threshold: " + threshold.toFixed(4));
     });
 
-    // ── Auto-start BlinkDetector on page load ──
+    // ── Auto-start: Click "Enable Camera" programmatically on load ──
+    // This triggers startCamera() which BOTH shows preview AND starts BlinkDetector
+    // with a shared video element (no duplicate streams).
     window.addEventListener("load", function () {
       setTimeout(function () {
-        if (typeof BlinkDetector !== "undefined" && typeof BlinkDetector.start === "function") {
-          console.log("[Blink Page] Auto-starting BlinkDetector…");
-          BlinkDetector.start();
-        } else {
-          console.warn("[Blink Page] BlinkDetector not found — blink-detection.js may not have loaded.");
-        }
-      }, 2000);
+        console.log("[Blink Page] Auto-triggering camera start…");
+        startCamera();
+      }, 100);
     });
   </script>
 </body>
