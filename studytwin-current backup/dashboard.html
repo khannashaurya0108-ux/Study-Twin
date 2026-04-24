@@ -618,10 +618,11 @@
     .sensor-bar-bg {
       width: 100%;
       height: 6px;
-      background: rgba(255,255,255,0.08);
+      background: rgba(255, 255, 255, 0.08);
       border-radius: 3px;
       overflow: hidden;
     }
+
     .sensor-bar-fill {
       height: 100%;
       border-radius: 3px;
@@ -639,9 +640,17 @@
 
     /* ── Calibrating pulse animation ── */
     @keyframes calibrate-pulse {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 1; }
+
+      0%,
+      100% {
+        opacity: 0.4;
+      }
+
+      50% {
+        opacity: 1;
+      }
     }
+
     #card-blink[data-status="calibrating"] .stat-value {
       animation: calibrate-pulse 1.2s ease-in-out infinite;
     }
@@ -782,7 +791,8 @@
         </div>
         <div class="mc stat-card" id="card-blink">
           <div class="mc-label stat-label">Blink Rate</div>
-          <div class="mc-val stat-value" id="blink-rate-val" style="color:var(--ink2); display: inline-block;">—</div><span class="mc-unit stat-unit">/ min</span>
+          <div class="mc-val stat-value" id="blink-rate-val" style="color:var(--ink2); display: inline-block;">—</div>
+          <span class="mc-unit stat-unit">/ min</span>
           <div class="mc-sub stat-sub" id="blink-status-text">Initialising camera...</div>
         </div>
       </div>
@@ -1136,6 +1146,11 @@
   <script src="blink-detection.js"></script>
   <script src="app.js"></script>
   <script>
+    // ── SERVER URL ──────────────────────────────────────────────
+    // LOCAL DEV: 'http://localhost:3001'
+    // PRODUCTION (Render): 'https://your-app-name.onrender.com'
+    const SERVER_URL = 'http://localhost:3001';
+
     // Aura Background
     let aura = null;
     window.addEventListener('load', () => {
@@ -1264,7 +1279,7 @@
       setBar('bar-blink', (d.blink / 24) * 100, col); setBar('bar-bat', ((d.battery - 3400) / 780) * 100, '#059669')
       setCol('r-gsr', col); setCol('r-gsrd', col); setCol('r-blink', col)
 
- 
+
       // History
       set('hist-today', Math.round(d.cli)); setCol('hist-today', col)
 
@@ -1363,6 +1378,33 @@
       }
     })
 
+    // ── AI INSIGHTS (every 5 minutes) ──────────────────────────────────────────
+    setInterval(async () => {
+      try {
+        const sessionData = {
+          cli_history: cliHistory.slice(-300),
+          gsr_history: [],
+          rmssd_history: [],
+          cds_scores: TRIBE.get(),
+          current_state: ST.get().state,
+          blink_rate: ST.get().blink
+        };
+        const resp = await fetch(`${SERVER_URL}/insights`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sessionData)
+        });
+        const data = await resp.json();
+        if (data.insights?.length >= 3) {
+          document.getElementById('ins-1').textContent = data.insights[0];
+          document.getElementById('ins-2').textContent = data.insights[1];
+          document.getElementById('ins-3').textContent = data.insights[2];
+        }
+      } catch (e) {
+        console.log('Insights API unavailable, using fallback');
+      }
+    }, 300000); // every 5 minutes
+
     // ── Start BlinkDetector + trigger calibration with session ─────────────────
     document.addEventListener('DOMContentLoaded', () => {
       // BlinkDetector auto-starts 2s after page load (via app.js Patch E)
@@ -1414,116 +1456,116 @@
   </script>
 
   <script>
-  // ── Listen to the custom event fired by blink-detection.js ──────────────────
-  document.addEventListener("blinkUpdate", function (e) {
-    const {
-      blinkRate: rate,
-      blinkScore: score,
-      isReady: calibrated,
-      faceDetected,
-      cameraGranted,
-      ear,
-      earThreshold
-    } = e.detail;
+    // ── Listen to the custom event fired by blink-detection.js ──────────────────
+    document.addEventListener("blinkUpdate", function (e) {
+      const {
+        blinkRate: rate,
+        blinkScore: score,
+        isReady: calibrated,
+        faceDetected,
+        cameraGranted,
+        ear,
+        earThreshold
+      } = e.detail;
 
-    // ── Blink rate card (metric row) ─────────────────────────────────────────
-    const rateEl = document.getElementById("blink-rate-val")
-      || document.getElementById("blink-rate")
-      || document.getElementById("stat-blink");
-    if (rateEl) rateEl.textContent = rate.toFixed(1);
+      // ── Blink rate card (metric row) ─────────────────────────────────────────
+      const rateEl = document.getElementById("blink-rate-val")
+        || document.getElementById("blink-rate")
+        || document.getElementById("stat-blink");
+      if (rateEl) rateEl.textContent = rate.toFixed(1);
 
-    // ── Status text below the blink rate card ────────────────────────────────
-    const statusEl = document.getElementById("blink-status-text");
-    if (statusEl) {
-      if (!cameraGranted) {
-        statusEl.textContent = "No camera · default score";
-        statusEl.style.color = "#9CA3AF";
-        document.getElementById("card-blink")?.removeAttribute("data-status");
-      } else if (!faceDetected) {
-        statusEl.textContent = "⚠ No face detected · move closer";
-        statusEl.style.color = "#ef4444";
-        document.getElementById("card-blink")?.removeAttribute("data-status");
-      } else if (!calibrated) {
-        statusEl.textContent = "Calibrating EAR baseline…";
-        statusEl.style.color = "#f59e0b";
-        document.getElementById("card-blink")?.setAttribute("data-status", "calibrating");
-      } else if (rate < 8) {
-        statusEl.textContent = "⚠ Very low blink — high fatigue signal";
-        statusEl.style.color = "#ef4444";
-        document.getElementById("card-blink")?.removeAttribute("data-status");
-      } else if (rate < 12) {
-        statusEl.textContent = "⚠ Low blink rate — cognitive load high";
-        statusEl.style.color = "#f59e0b";
-        document.getElementById("card-blink")?.removeAttribute("data-status");
-      } else if (rate < 15) {
-        statusEl.textContent = "Normal range";
-        statusEl.style.color = "#f59e0b";
-        document.getElementById("card-blink")?.removeAttribute("data-status");
-      } else {
-        statusEl.textContent = "Relaxed";
-        statusEl.style.color = "#10b981";
-        document.getElementById("card-blink")?.removeAttribute("data-status");
+      // ── Status text below the blink rate card ────────────────────────────────
+      const statusEl = document.getElementById("blink-status-text");
+      if (statusEl) {
+        if (!cameraGranted) {
+          statusEl.textContent = "No camera · default score";
+          statusEl.style.color = "#9CA3AF";
+          document.getElementById("card-blink")?.removeAttribute("data-status");
+        } else if (!faceDetected) {
+          statusEl.textContent = "⚠ No face detected · move closer";
+          statusEl.style.color = "#ef4444";
+          document.getElementById("card-blink")?.removeAttribute("data-status");
+        } else if (!calibrated) {
+          statusEl.textContent = "Calibrating EAR baseline…";
+          statusEl.style.color = "#f59e0b";
+          document.getElementById("card-blink")?.setAttribute("data-status", "calibrating");
+        } else if (rate < 8) {
+          statusEl.textContent = "⚠ Very low blink — high fatigue signal";
+          statusEl.style.color = "#ef4444";
+          document.getElementById("card-blink")?.removeAttribute("data-status");
+        } else if (rate < 12) {
+          statusEl.textContent = "⚠ Low blink rate — cognitive load high";
+          statusEl.style.color = "#f59e0b";
+          document.getElementById("card-blink")?.removeAttribute("data-status");
+        } else if (rate < 15) {
+          statusEl.textContent = "Normal range";
+          statusEl.style.color = "#f59e0b";
+          document.getElementById("card-blink")?.removeAttribute("data-status");
+        } else {
+          statusEl.textContent = "Relaxed";
+          statusEl.style.color = "#10b981";
+          document.getElementById("card-blink")?.removeAttribute("data-status");
+        }
       }
-    }
 
-    // ── Raw sensors panel — blink rate row ───────────────────────────────────
-    const rateDisplay = document.getElementById("blink-rate-display");
-    if (rateDisplay) rateDisplay.textContent = rate.toFixed(1);
+      // ── Raw sensors panel — blink rate row ───────────────────────────────────
+      const rateDisplay = document.getElementById("blink-rate-display");
+      if (rateDisplay) rateDisplay.textContent = rate.toFixed(1);
 
-    // ── Raw sensors panel — blink score row ──────────────────────────────────
-    const scoreDisplay = document.getElementById("blink-score-display");
-    if (scoreDisplay) scoreDisplay.textContent = score.toFixed(0);
+      // ── Raw sensors panel — blink score row ──────────────────────────────────
+      const scoreDisplay = document.getElementById("blink-score-display");
+      if (scoreDisplay) scoreDisplay.textContent = score.toFixed(0);
 
-    // ── Blink rate bar: 0/min = 0%, 20/min = 100% ───────────────────────────
-    const blinkBar = document.getElementById("blink-bar");
-    if (blinkBar) {
-      const pct = Math.min(100, (rate / 20) * 100);
-      blinkBar.style.width = pct + "%";
-      blinkBar.style.background = rate < 10 ? "#ef4444" : rate < 15 ? "#f59e0b" : "#10b981";
-    }
-
-    // ── Blink score bar: 0 = 0%, 100 = 100% ─────────────────────────────────
-    const scoreBar = document.getElementById("blink-score-bar");
-    if (scoreBar) {
-      scoreBar.style.width = score + "%";
-      scoreBar.style.background = score > 70 ? "#ef4444" : score > 45 ? "#f59e0b" : "#10b981";
-    }
-
-    // ── Face-tracking dot in session bar ─────────────────────────────────────
-    const faceDot = document.getElementById("blink-face-dot");
-    if (faceDot) {
-      faceDot.style.background = faceDetected ? "var(--emerald)" : "var(--ink4)";
-      faceDot.title = faceDetected
-        ? "Face tracked" + (ear != null ? " — EAR: " + ear.toFixed(3) : "")
-        : "No face in frame";
-    }
-
-    // ── Camera status pill in session bar ────────────────────────────────────
-    const camPill = document.getElementById("camera-status-pill");
-    if (camPill) {
-      if (cameraGranted && faceDetected) {
-        camPill.textContent = "📷 Face Tracked";
-        camPill.style.color = "var(--emerald)";
-      } else if (cameraGranted) {
-        camPill.textContent = "📷 Camera Active";
-        camPill.style.color = "var(--cobalt)";
-      } else {
-        camPill.textContent = "📷 No Camera";
-        camPill.style.color = "var(--ink4)";
+      // ── Blink rate bar: 0/min = 0%, 20/min = 100% ───────────────────────────
+      const blinkBar = document.getElementById("blink-bar");
+      if (blinkBar) {
+        const pct = Math.min(100, (rate / 20) * 100);
+        blinkBar.style.width = pct + "%";
+        blinkBar.style.background = rate < 10 ? "#ef4444" : rate < 15 ? "#f59e0b" : "#10b981";
       }
-    }
 
-    // ── EAR debug line ──────────────────────────────────────────────────────
-    const earEl = document.getElementById("blink-ear-debug");
-    if (earEl && ear != null && earThreshold != null) {
-      earEl.textContent = "EAR: " + ear.toFixed(4) + " | Thresh: " + earThreshold.toFixed(4);
-    }
+      // ── Blink score bar: 0 = 0%, 100 = 100% ─────────────────────────────────
+      const scoreBar = document.getElementById("blink-score-bar");
+      if (scoreBar) {
+        scoreBar.style.width = score + "%";
+        scoreBar.style.background = score > 70 ? "#ef4444" : score > 45 ? "#f59e0b" : "#10b981";
+      }
 
-    // ── Wire blink score into CLI fusion if app.js ST engine is present ──────
-    if (window.ST && typeof window.ST._blinkScore !== "undefined") {
-      window.ST._blinkScore = score;
-    }
-  });
+      // ── Face-tracking dot in session bar ─────────────────────────────────────
+      const faceDot = document.getElementById("blink-face-dot");
+      if (faceDot) {
+        faceDot.style.background = faceDetected ? "var(--emerald)" : "var(--ink4)";
+        faceDot.title = faceDetected
+          ? "Face tracked" + (ear != null ? " — EAR: " + ear.toFixed(3) : "")
+          : "No face in frame";
+      }
+
+      // ── Camera status pill in session bar ────────────────────────────────────
+      const camPill = document.getElementById("camera-status-pill");
+      if (camPill) {
+        if (cameraGranted && faceDetected) {
+          camPill.textContent = "📷 Face Tracked";
+          camPill.style.color = "var(--emerald)";
+        } else if (cameraGranted) {
+          camPill.textContent = "📷 Camera Active";
+          camPill.style.color = "var(--cobalt)";
+        } else {
+          camPill.textContent = "📷 No Camera";
+          camPill.style.color = "var(--ink4)";
+        }
+      }
+
+      // ── EAR debug line ──────────────────────────────────────────────────────
+      const earEl = document.getElementById("blink-ear-debug");
+      if (earEl && ear != null && earThreshold != null) {
+        earEl.textContent = "EAR: " + ear.toFixed(4) + " | Thresh: " + earThreshold.toFixed(4);
+      }
+
+      // ── Wire blink score into CLI fusion if app.js ST engine is present ──────
+      if (window.ST && typeof window.ST._blinkScore !== "undefined") {
+        window.ST._blinkScore = score;
+      }
+    });
   </script>
 
 </body>

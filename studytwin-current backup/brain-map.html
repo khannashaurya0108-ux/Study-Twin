@@ -5,8 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>StudyTwin — Brain Intelligence (TRIBE v2)</title>
-  <meta name="description"
-    content="Deep cortical demand analysis powered by Meta's TRIBE v2 fMRI foundation model." />
+  <meta name="description" content="Deep cortical demand analysis powered by Meta's TRIBE v2 fMRI foundation model." />
   <link rel="stylesheet" href="styles.css" />
   <style>
     /* ── PAGE SPECIFIC STYLES ── */
@@ -335,23 +334,38 @@
 
     /* ── ANIMATIONS ── */
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
+
     .loading-spinner {
       width: 20px;
       height: 20px;
-      border: 2px solid rgba(255,255,255,0.2);
+      border: 2px solid rgba(255, 255, 255, 0.2);
       border-top-color: white;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
 
     @media (max-width: 1000px) {
-      .brain-map-hero, .params-container, .foundation-container, .region-grid, .history-cards, .steps-grid {
+
+      .brain-map-hero,
+      .params-container,
+      .foundation-container,
+      .region-grid,
+      .history-cards,
+      .steps-grid {
         grid-template-columns: 1fr;
       }
-      .brain-map-hero { text-align: center; }
-      .tag-group { justify-content: center; }
+
+      .brain-map-hero {
+        text-align: center;
+      }
+
+      .tag-group {
+        justify-content: center;
+      }
     }
   </style>
 </head>
@@ -366,17 +380,26 @@
         <div class="eyebrow amber">TRIBE v2 · Brain-Predictive AI</div>
         <h1 class="display-xl">What your brain actually needs. Before you start.</h1>
         <p class="ink3" style="max-width: 540px; margin-top: 20px; font-size: 18px; line-height: 1.6;">
-          Upload your study material. TRIBE v2 — trained on 1,115 hours of fMRI data from 720 subjects — predicts exactly which brain circuits it demands. StudyTwin uses this to set your session before your first biosignal fires.
+          Upload your study material. TRIBE v2 — trained on 1,115 hours of fMRI data from 720 subjects — predicts
+          exactly which brain circuits it demands. StudyTwin uses this to set your session before your first biosignal
+          fires.
         </p>
       </div>
 
       <div class="upload-card">
-        <div class="drop-zone" id="drop-zone">
+        <div class="drop-zone" id="drop-zone" style="cursor:pointer;"
+          onclick="document.getElementById('material-file-input').click()">
           <input type="file" id="file-input" accept=".pdf,.txt" style="display:none">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            style="margin-bottom: 12px; opacity: 0.5;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
           <p style="font-weight: 600;">Drop PDF, URL or Text</p>
           <p style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Max 50MB · IEEE Format Supported</p>
         </div>
+        <input type="file" id="material-file-input" accept=".pdf,.doc,.docx,.txt" style="display:none;" />
         <button class="btn-primary" id="analyse-btn" style="width: 100%; justify-content: center; height: 54px;">
           <span id="btn-text">Analyse Material</span>
         </button>
@@ -409,7 +432,8 @@
         <div class="region-subtitle">Prefrontal Cortex · Anterior Cingulate</div>
         <div id="badge-exec"></div>
         <p class="ink3" style="font-size: 14px; line-height: 1.6; margin-top: 12px;">
-          Manages working memory, logical sequencing, and goal-directed focus. High demand leads to rapid mental fatigue.
+          Manages working memory, logical sequencing, and goal-directed focus. High demand leads to rapid mental
+          fatigue.
         </p>
         <div class="tag-label">What loads this region</div>
         <div class="tag-group">
@@ -487,7 +511,7 @@
         <div class="card" style="padding: 40px;">
           <div class="eyebrow">Session Parameters</div>
           <h2 class="display-sm" style="margin-bottom: 24px;">Adaptive Configuration</h2>
-          
+
           <div class="param-item">
             <div class="param-label">Recommended Duration</div>
             <div class="param-val" id="p-dur">19 min</div>
@@ -513,7 +537,7 @@
         <div>
           <div class="eyebrow">The TRIBE Difference</div>
           <h2 class="display-sm" style="margin-bottom: 32px;">Pre-emptive Personalisation</h2>
-          
+
           <div class="timeline">
             <div class="timeline-item">
               <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -521,7 +545,8 @@
                 <h4 style="font-weight: 700;">Without TRIBE</h4>
               </div>
               <p class="ink3" style="font-size: 14px;">
-                Standard 25 min fixed session. Threshold 76. No context of what you are studying. System only reacts after you are already tired.
+                Standard 25 min fixed session. Threshold 76. No context of what you are studying. System only reacts
+                after you are already tired.
               </p>
             </div>
             <div class="timeline-item active">
@@ -530,7 +555,8 @@
                 <h4 style="font-weight: 700;">With TRIBE (Executive Load 82)</h4>
               </div>
               <p class="ink3" style="font-size: 14px;">
-                19 min session. Threshold 62. System knows the material is hard. Routed away from dense text at first sign of 'Elevated' state.
+                19 min session. Threshold 62. System knows the material is hard. Routed away from dense text at first
+                sign of 'Elevated' state.
               </p>
             </div>
           </div>
@@ -542,7 +568,7 @@
     <section class="history-section">
       <div class="eyebrow cobalt">Longitudinal Analysis</div>
       <h2 class="display-md">Brain Circuit Load — Last 7 Days</h2>
-      
+
       <div class="chart-wrap">
         <canvas id="history-chart" height="300"></canvas>
       </div>
@@ -559,7 +585,8 @@
           </p>
         </div>
         <div class="card" style="padding: 24px;">
-          <div class="region-pill" style="color: var(--cobalt); border-color: rgba(37,99,235,0.2); background: var(--cobalt-l);">Language</div>
+          <div class="region-pill"
+            style="color: var(--cobalt); border-color: rgba(37,99,235,0.2); background: var(--cobalt-l);">Language</div>
           <div style="margin-top: 16px;">
             <div class="sb-label">7-Day Avg</div>
             <div class="sb-val" style="font-size: 24px;">42%</div>
@@ -583,14 +610,17 @@
 
     <!-- SECTION 5: LIVE INTEGRATION -->
     <section style="padding: 0 28px 100px; max-width: 1300px; margin: 0 auto;">
-      <div class="card tribe-card" style="padding: 40px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+      <div class="card tribe-card"
+        style="padding: 40px; display: flex; flex-direction: column; align-items: center; text-align: center;">
         <div class="eyebrow amber">Live Session Integration</div>
         <h2 class="display-sm" style="margin-top: 10px;">TRIBE v2 Routing Engine</h2>
         <p class="ink3" style="max-width: 600px; margin-top: 12px;">
-          During your active session, TRIBE v2 routing suggestions will appear here based on your real-time cognitive load and the predicted circuit demand.
+          During your active session, TRIBE v2 routing suggestions will appear here based on your real-time cognitive
+          load and the predicted circuit demand.
         </p>
-        
-        <div id="routing-panel" style="margin-top: 32px; padding: 24px; border: 1px solid var(--border); border-radius: var(--r-lg); width: 100%; max-width: 500px; transition: var(--trans);">
+
+        <div id="routing-panel"
+          style="margin-top: 32px; padding: 24px; border: 1px solid var(--border); border-radius: var(--r-lg); width: 100%; max-width: 500px; transition: var(--trans);">
           <div class="sb-label" id="routing-status-label">Engine Status</div>
           <div id="routing-content" style="font-weight: 700; font-size: 18px; margin-top: 8px;">
             All circuits within parameters — continue current material.
@@ -605,9 +635,10 @@
         <div>
           <div class="eyebrow amber">Technical Specs</div>
           <h2 class="display-sm" style="color: white; margin-bottom: 32px;">TRIBE v2 Model Card</h2>
-          
+
           <div class="model-card">
-            <div class="model-row"><span>Training Data</span><span style="color: var(--amber);">1,115 hours fMRI</span></div>
+            <div class="model-row"><span>Training Data</span><span style="color: var(--amber);">1,115 hours fMRI</span>
+            </div>
             <div class="model-row"><span>Subjects</span><span>720</span></div>
             <div class="model-row"><span>Cortical Vertices</span><span>20,484</span></div>
             <div class="model-row"><span>Model Type</span><span>Brain-Predictive Foundation</span></div>
@@ -619,10 +650,13 @@
 
         <div style="display: flex; flex-direction: column; justify-content: center;">
           <div class="citation">
-            TRIBE v2 predicts brain activation patterns from multimodal content with high fidelity. StudyTwin applies this to study scheduling — the first educational system to use fMRI-scale brain prediction for adaptive content routing.
+            TRIBE v2 predicts brain activation patterns from multimodal content with high fidelity. StudyTwin applies
+            this to study scheduling — the first educational system to use fMRI-scale brain prediction for adaptive
+            content routing.
           </div>
           <div style="margin-top: 40px;">
-            <span class="badge" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px;">
+            <span class="badge"
+              style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px;">
               No published study scheduling system has done this. Novel contribution. Patent claim drafted.
             </span>
           </div>
@@ -664,173 +698,316 @@
 
   <div id="_footer"></div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
   <script>
-    // ── UPLOAD SIMULATION ──
-    const analyseBtn = document.getElementById('analyse-btn')
-    const btnText = document.getElementById('btn-text')
-    const statusText = document.getElementById('status-text')
+    // // ── SERVER URL ──────────────────────────────────────────────
+    // // LOCAL DEV: 'http://localhost:3001'
+    // // PRODUCTION (Render): 'https://your-app-name.onrender.com'
+    // const SERVER_URL = 'http://localhost:3001';
 
-    const dropZone = document.getElementById('drop-zone')
-    const fileInput = document.getElementById('file-input')
+    // ── UPLOAD STATE ────────────────────────────────────────────
+    const analyseBtn = document.getElementById('analyse-btn');
+    const btnText = document.getElementById('btn-text');
+    const statusText = document.getElementById('status-text');
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('material-file-input');
 
-    dropZone.addEventListener('click', () => {
-      fileInput.click()
-    })
+    let selectedFile = null;
+    let pollingTimer = null;
 
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files && fileInput.files[0]) {
-        const pTags = dropZone.getElementsByTagName('p')
-        if (pTags.length > 0) {
-          pTags[0].textContent = fileInput.files[0].name
+    // ── FILE SELECTION ──────────────────────────────────────────
+    // Handle file via <input type="file">
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          selectedFile = e.target.files[0];
+          statusText.textContent = `Selected: ${selectedFile.name}`;
+          dropZone.querySelector('p').textContent = selectedFile.name;
         }
-      }
-    })
-
-    analyseBtn.addEventListener('click', async () => {
-      analyseBtn.disabled = true
-      btnText.innerHTML = '<div class="loading-spinner"></div>'
-      statusText.textContent = 'Sending to TRIBE analysis engine...'
-
-      const uid = window.firebase?.auth().currentUser?.uid
-      if (!uid) { 
-        statusText.textContent = 'Please sign in first.'
-        analyseBtn.disabled = false
-        return 
-      }
-
-      const formData = new FormData()
-      if (fileInput?.files[0]) { 
-        formData.append('file', fileInput.files[0]) 
-      } else { 
-        formData.append('text', document.getElementById('text-input')?.value || 'sample study material for analysis') 
-      }
-      formData.append('uid', uid)
-
-      try {
-        const res = await fetch('https://study-twin.onrender.com/analyze', { 
-          method: 'POST', 
-          body: formData 
-        })
-        const data = await res.json()
-        btnText.textContent = 'Analysis Submitted'
-        statusText.innerHTML = 'TRIBE is processing. Results appear in 2-3 minutes. <span style="color:#4ade80">✓</span>'
-        analyseBtn.disabled = false
-      } catch (err) {
-        btnText.textContent = 'Analyse Material'
-        statusText.textContent = 'Server error. Check connection and retry.'
-        analyseBtn.disabled = false
-      }
-    })
-
-    function updateUI(data) {
-      const circ = 377
-      
-      // Executive
-      document.getElementById('val-exec').textContent = data.executive
-      document.getElementById('ring-exec').style.strokeDashoffset = circ * (1 - data.executive / 100)
-      document.getElementById('badge-exec').innerHTML = `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(data.executive).color}20; color:${TRIBE.interpretScore(data.executive).color}; border-color:${TRIBE.interpretScore(data.executive).color}40;">${TRIBE.interpretScore(data.executive).label}</span>`
-      
-      // Language
-      document.getElementById('val-lang').textContent = data.language
-      document.getElementById('ring-lang').style.strokeDashoffset = circ * (1 - data.language / 100)
-      document.getElementById('badge-lang').innerHTML = `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(data.language).color}20; color:${TRIBE.interpretScore(data.language).color}; border-color:${TRIBE.interpretScore(data.language).color}40;">${TRIBE.interpretScore(data.language).label}</span>`
-      
-      // Visual
-      document.getElementById('val-vis').textContent = data.visual
-      document.getElementById('ring-vis').style.strokeDashoffset = circ * (1 - data.visual / 100)
-      document.getElementById('badge-vis').innerHTML = `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(data.visual).color}20; color:${TRIBE.interpretScore(data.visual).color}; border-color:${TRIBE.interpretScore(data.visual).color}40;">${TRIBE.interpretScore(data.visual).label}</span>`
-
-      // Params
-      document.getElementById('p-dur').textContent = data.recommended_duration + ' min'
-      document.getElementById('p-thresh').textContent = (76 - (data.executive / 100 * 18)).toFixed(0) + '%'
-      document.getElementById('p-dom').textContent = 'Executive'
+      });
     }
 
-    // ── TRIBE SUBSCRIPTION ──
-    TRIBE.subscribe(data => {
-      updateUI(data)
-    })
+    // Handle drag-and-drop onto drop-zone
+    if (dropZone) {
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#2563EB';
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.style.borderColor = 'rgba(255,255,255,0.2)';
+      });
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'rgba(255,255,255,0.2)';
+        if (e.dataTransfer.files.length > 0) {
+          selectedFile = e.dataTransfer.files[0];
+          statusText.textContent = `Selected: ${selectedFile.name}`;
+          const pEl = dropZone.querySelector('p');
+          if (pEl) pEl.textContent = selectedFile.name;
+        }
+      });
+    }
 
-    // ── ST SUBSCRIPTION (Live Integration) ──
-    ST.subscribe(d => {
-      const panel = document.getElementById('routing-panel')
-      const content = document.getElementById('routing-content')
-      const label = document.getElementById('routing-status-label')
+    // ── ANALYSE BUTTON ──────────────────────────────────────────
+    analyseBtn.addEventListener('click', async () => {
+      // Need to be logged in
+      const user = window.firebase?.auth()?.currentUser;
+      const uid = user?.uid || window.CURRENT_UID;
 
-      if (d.state === 'elevated' || d.state === 'overloaded') {
-        panel.style.borderColor = 'var(--amber)'
-        panel.style.background = 'rgba(217, 119, 6, 0.05)'
-        label.textContent = 'TRIBE v2 Recommendation'
-        label.style.color = 'var(--amber)'
-        content.textContent = TRIBE.getDominantRegion().recommendation
-      } else {
-        panel.style.borderColor = 'var(--border)'
-        panel.style.background = 'transparent'
-        label.textContent = 'Engine Status'
-        label.style.color = 'var(--ink4)'
-        content.textContent = "All circuits within parameters — continue current material."
+      if (!uid) {
+        statusText.textContent = '⚠ Please sign in first';
+        return;
       }
-    })
 
-    // ── HISTORY CHART ──
-    const histCtx = document.getElementById('history-chart').getContext('2d')
-    new Chart(histCtx, {
-      type: 'line',
-      data: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [
-          {
-            label: 'Executive',
-            data: [45, 82, 55, 91, 60, 40, 75],
-            borderColor: '#D97706',
-            backgroundColor: 'transparent',
-            borderWidth: 3,
-            tension: 0.4,
-            pointRadius: 4
-          },
-          {
-            label: 'Language',
-            data: [30, 40, 85, 45, 50, 30, 35],
-            borderColor: '#2563EB',
-            backgroundColor: 'transparent',
-            borderWidth: 3,
-            tension: 0.4,
-            pointRadius: 4
-          },
-          {
-            label: 'Visual',
-            data: [20, 25, 30, 35, 25, 45, 30],
-            borderColor: '#059669',
-            backgroundColor: 'transparent',
-            borderWidth: 3,
-            tension: 0.4,
-            pointRadius: 4
+      if (!selectedFile && !document.getElementById('study-text-input')?.value) {
+        // Prompt to select a file if nothing selected yet
+        if (fileInput) {
+          fileInput.click();
+          return;
+        }
+        statusText.textContent = '⚠ Please select a file or paste text first';
+        return;
+      }
+
+      // ── BUILD FORM DATA ────────────────────────────────────────
+      const formData = new FormData();
+      formData.append('uid', uid);
+
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+        formData.append('title', selectedFile.name.replace(/\.[^.]+$/, ''));
+      } else {
+        // Text input fallback
+        const textVal = document.getElementById('study-text-input')?.value || '';
+        formData.append('text', textVal);
+        formData.append('title', 'Pasted Study Material');
+      }
+
+      // ── SHOW LOADING UI ────────────────────────────────────────
+      analyseBtn.disabled = true;
+      btnText.innerHTML = '<div class="loading-spinner"></div>';
+      statusText.textContent = 'Uploading and extracting text…';
+
+      try {
+        // ── POST TO server.js /analyze ─────────────────────────
+        const response = await fetch(`${SERVER_URL}/analyze`, {
+          method: 'POST',
+          headers: { 'Authorization': uid },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: 'Upload failed' }));
+          throw new Error(err.error || `Server error ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Upload result:', result);
+
+        // ── SHOW POLLING UI ────────────────────────────────────
+        btnText.textContent = 'Analysing…';
+        statusText.innerHTML = result.kaggle_triggered
+          ? `⏳ TRIBE running on Kaggle (~${result.estimated_minutes} min)…`
+          : `✅ Uploaded. <strong>Manually run your Kaggle notebook</strong> to process.`;
+
+        // ── START POLLING FIREBASE ─────────────────────────────
+        // Poll every 10 seconds for up to 15 minutes
+        let attempts = 0;
+        const maxAttempts = 90; // 90 × 10s = 15 min
+
+        pollingTimer = setInterval(async () => {
+          attempts++;
+
+          try {
+            const statusResp = await fetch(`${SERVER_URL}/analyze/status/${uid}`);
+            const statusData = await statusResp.json();
+
+            console.log(`Poll #${attempts}: ${statusData.status}`);
+
+            if (statusData.status === 'complete') {
+              clearInterval(pollingTimer);
+              pollingTimer = null;
+
+              // Update UI with real CDS scores from metadata
+              const meta = statusData.metadata;
+              if (meta) {
+                updateUI({
+                  executive: meta.cds_executive || 82,
+                  language: meta.cds_language || 67,
+                  visual: meta.cds_visual || 34,
+                  recommended_duration: meta.recommended_duration || 25,
+                  dominant_region: meta.dominant_region || 'Executive',
+                  material: meta.material || selectedFile?.name || 'Study Material',
+                  tribe_mode: meta.tribe_mode || 'lite_nlp'
+                });
+              }
+
+              analyseBtn.disabled = false;
+              btnText.textContent = 'Analyse Material';
+              statusText.innerHTML = `Analysis complete ✅ <span style="color:#4ade80; margin-left:5px;">(${(statusData.metadata?.tribe_mode || 'LITE').toUpperCase()} mode)</span>`;
+
+            } else if (statusData.status === 'processing') {
+              statusText.textContent = `⏳ Kaggle is processing… (${attempts * 10}s elapsed)`;
+
+            } else if (attempts >= maxAttempts) {
+              clearInterval(pollingTimer);
+              pollingTimer = null;
+              analyseBtn.disabled = false;
+              btnText.textContent = 'Analyse Material';
+              statusText.textContent = '⚠ Timed out. Check that Kaggle notebook ran.';
+            }
+          } catch (pollErr) {
+            console.warn('Polling error:', pollErr.message);
           }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
-        },
-        scales: {
-          y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } },
-          x: { grid: { display: false } }
+        }, 10000); // poll every 10 seconds
+
+      } catch (uploadErr) {
+        console.error('Upload error:', uploadErr);
+        analyseBtn.disabled = false;
+        btnText.textContent = 'Analyse Material';
+        statusText.textContent = `❌ Error: ${uploadErr.message}`;
+      }
+    });
+
+    // ── UPDATE UI WITH REAL CDS SCORES ──────────────────────────
+    function updateUI(data) {
+      const circ = 377;
+
+      // Executive ring
+      const execVal = data.executive;
+      const execEl = document.getElementById('val-exec');
+      const execRing = document.getElementById('ring-exec');
+      if (execEl) execEl.textContent = execVal;
+      if (execRing) execRing.style.strokeDashoffset = circ * (1 - execVal / 100);
+      document.getElementById('badge-exec').innerHTML =
+        `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(execVal).color}20; color:${TRIBE.interpretScore(execVal).color}; border-color:${TRIBE.interpretScore(execVal).color}40;">${TRIBE.interpretScore(execVal).label}</span>`;
+
+      // Language ring
+      const langVal = data.language;
+      const langEl = document.getElementById('val-lang');
+      const langRing = document.getElementById('ring-lang');
+      if (langEl) langEl.textContent = langVal;
+      if (langRing) langRing.style.strokeDashoffset = circ * (1 - langVal / 100);
+      document.getElementById('badge-lang').innerHTML =
+        `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(langVal).color}20; color:${TRIBE.interpretScore(langVal).color}; border-color:${TRIBE.interpretScore(langVal).color}40;">${TRIBE.interpretScore(langVal).label}</span>`;
+
+      // Visual ring
+      const visVal = data.visual;
+      const visEl = document.getElementById('val-vis');
+      const visRing = document.getElementById('ring-vis');
+      if (visEl) visEl.textContent = visVal;
+      if (visRing) visRing.style.strokeDashoffset = circ * (1 - visVal / 100);
+      document.getElementById('badge-vis').innerHTML =
+        `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(visVal).color}20; color:${TRIBE.interpretScore(visVal).color}; border-color:${TRIBE.interpretScore(visVal).color}40;">${TRIBE.interpretScore(visVal).label}</span>`;
+
+      // Session params
+      const pDur = document.getElementById('p-dur');
+      const pThresh = document.getElementById('p-thresh');
+      const pDom = document.getElementById('p-dom');
+      if (pDur) pDur.textContent = (data.recommended_duration || 25) + ' min';
+      if (pThresh) pThresh.textContent = (76 - (data.executive / 100) * 18).toFixed(0) + '%';
+      if (pDom) pDom.textContent = data.dominant_region || 'Executive';
+
+      // Update TRIBE engine for dashboard sync
+      TRIBE.updateFromFirebase({
+        cds_executive: data.executive,
+        cds_language: data.language,
+        cds_visual: data.visual,
+        recommended_duration: data.recommended_duration,
+        dominant_region: data.dominant_region,
+        material: data.material,
+        tribe_mode: data.tribe_mode
+      });
+
+      console.log('[StudyTwin] UI updated with real CDS scores:', data);
+    }
+
+    // ── TRIBE SUBSCRIPTION (for real-time Firebase updates) ──────
+    TRIBE.subscribe(data => {
+      updateUI(data);
+    });
+
+    // ── ST SUBSCRIPTION (live biosignal routing) ─────────────────
+    ST.subscribe(d => {
+      const panel = document.getElementById('routing-panel');
+      const content = document.getElementById('routing-content');
+      const label = document.getElementById('routing-status-label');
+
+      if (panel && content && label) {
+        if (d.state === 'elevated' || d.state === 'overloaded') {
+          panel.style.borderColor = 'var(--amber)';
+          panel.style.background = 'rgba(217, 119, 6, 0.05)';
+          label.textContent = 'TRIBE v2 Recommendation';
+          label.style.color = 'var(--amber)';
+          content.textContent = TRIBE.getDominantRegion().recommendation;
+        } else {
+          panel.style.borderColor = 'var(--border)';
+          panel.style.background = 'transparent';
+          label.textContent = 'Engine Status';
+          label.style.color = 'var(--ink4)';
+          content.textContent = 'All circuits within parameters — continue current material.';
         }
       }
-    })
+    });
 
-    // Initial load
+    // ── HISTORY CHART (unchanged from original) ──────────────────
+    const histCtx = document.getElementById('history-chart');
+    if (histCtx) {
+      const histChart = new Chart(histCtx.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [
+            {
+              label: 'Executive',
+              data: [45, 82, 55, 91, 60, 40, 75],
+              borderColor: '#D97706',
+              backgroundColor: 'transparent',
+              borderWidth: 3,
+              tension: 0.4,
+              pointRadius: 4
+            },
+            {
+              label: 'Language',
+              data: [30, 40, 85, 45, 50, 30, 35],
+              borderColor: '#2563EB',
+              backgroundColor: 'transparent',
+              borderWidth: 3,
+              tension: 0.4,
+              pointRadius: 4
+            },
+            {
+              label: 'Visual',
+              data: [20, 25, 30, 35, 25, 45, 30],
+              borderColor: '#059669',
+              backgroundColor: 'transparent',
+              borderWidth: 3,
+              tension: 0.4,
+              pointRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } },
+          scales: {
+            y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // ── INITIAL LOAD — populate rings from Firebase if data exists ─
     window.addEventListener('load', () => {
-      // Trigger initial animation
       setTimeout(() => {
-        updateUI(TRIBE.get())
-      }, 500)
-    })
+        updateUI(TRIBE.get());
+      }, 800);
+    });
   </script>
+
 </body>
 
 </html>
