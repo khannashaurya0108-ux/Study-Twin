@@ -701,10 +701,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
   <script>
-    // // ── SERVER URL ──────────────────────────────────────────────
-    // // LOCAL DEV: 'http://localhost:3001'
-    // // PRODUCTION (Render): 'https://your-app-name.onrender.com'
-    // const SERVER_URL = 'http://localhost:3001';
+    // ── SERVER URL ──────────────────────────────────────────────
+    // LOCAL DEV:  'http://localhost:3001'
+    // PRODUCTION: your Render URL (update this after deploying to Render)
+    // ⬇ UPDATE THIS LINE after you get your Render URL ⬇
+    const SERVER_URL = 'https://study-twin.onrender.com';
 
     // ── UPLOAD STATE ────────────────────────────────────────────
     const analyseBtn = document.getElementById('analyse-btn');
@@ -829,18 +830,25 @@
               clearInterval(pollingTimer);
               pollingTimer = null;
 
-              // Update UI with real CDS scores from metadata
+              // ── Step 1: Update DOM only (no TRIBE state change inside) ──
               const meta = statusData.metadata;
               if (meta) {
                 updateUI({
-                  executive: meta.cds_executive || 82,
-                  language: meta.cds_language || 67,
-                  visual: meta.cds_visual || 34,
+                  executive:            meta.cds_executive  || 82,
+                  language:             meta.cds_language   || 67,
+                  visual:               meta.cds_visual     || 34,
                   recommended_duration: meta.recommended_duration || 25,
-                  dominant_region: meta.dominant_region || 'Executive',
-                  material: meta.material || selectedFile?.name || 'Study Material',
-                  tribe_mode: meta.tribe_mode || 'lite_nlp'
+                  dominant_region:      meta.dominant_region || 'Executive',
+                  material:             meta.material || selectedFile?.name || 'Study Material',
+                  tribe_mode:           meta.tribe_mode || 'lite_nlp'
                 });
+
+                // ── Step 2: Update TRIBE internal state AFTER DOM update ──
+                // This is the ONLY safe place to call updateFromFirebase.
+                // updateUI has already returned — no loop possible.
+                _tribeUpdating = true;          // block the subscribe re-entry
+                TRIBE.updateFromFirebase(meta);
+                _tribeUpdating = false;
               }
 
               analyseBtn.disabled = false;
@@ -870,62 +878,73 @@
       }
     });
 
-    // ── UPDATE UI WITH REAL CDS SCORES ──────────────────────────
+    // ── UPDATE DOM ONLY — NO TRIBE STATE CHANGES INSIDE ─────────
+    // *** BUG FIX: updateUI() must ONLY touch the DOM.            ***
+    // *** It must NEVER call TRIBE.updateFromFirebase() because   ***
+    // *** that triggers TRIBE subscribers → calls updateUI again  ***
+    // *** → Maximum call stack size exceeded (infinite loop)      ***
     function updateUI(data) {
+      if (!data) return;
       const circ = 377;
+      const safe = (v, fb) => (v !== undefined && v !== null) ? v : fb;
+
+      const execVal = safe(data.executive, safe(data.cds_executive, 82));
+      const langVal = safe(data.language,  safe(data.cds_language,  67));
+      const visVal  = safe(data.visual,    safe(data.cds_visual,    34));
 
       // Executive ring
-      const execVal = data.executive;
-      const execEl = document.getElementById('val-exec');
+      const execEl   = document.getElementById('val-exec');
       const execRing = document.getElementById('ring-exec');
-      if (execEl) execEl.textContent = execVal;
-      if (execRing) execRing.style.strokeDashoffset = circ * (1 - execVal / 100);
-      document.getElementById('badge-exec').innerHTML =
+      const badgeExec = document.getElementById('badge-exec');
+      if (execEl)    execEl.textContent = execVal;
+      if (execRing)  execRing.style.strokeDashoffset = circ * (1 - execVal / 100);
+      if (badgeExec) badgeExec.innerHTML =
         `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(execVal).color}20; color:${TRIBE.interpretScore(execVal).color}; border-color:${TRIBE.interpretScore(execVal).color}40;">${TRIBE.interpretScore(execVal).label}</span>`;
 
       // Language ring
-      const langVal = data.language;
-      const langEl = document.getElementById('val-lang');
+      const langEl   = document.getElementById('val-lang');
       const langRing = document.getElementById('ring-lang');
-      if (langEl) langEl.textContent = langVal;
-      if (langRing) langRing.style.strokeDashoffset = circ * (1 - langVal / 100);
-      document.getElementById('badge-lang').innerHTML =
+      const badgeLang = document.getElementById('badge-lang');
+      if (langEl)    langEl.textContent = langVal;
+      if (langRing)  langRing.style.strokeDashoffset = circ * (1 - langVal / 100);
+      if (badgeLang) badgeLang.innerHTML =
         `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(langVal).color}20; color:${TRIBE.interpretScore(langVal).color}; border-color:${TRIBE.interpretScore(langVal).color}40;">${TRIBE.interpretScore(langVal).label}</span>`;
 
       // Visual ring
-      const visVal = data.visual;
-      const visEl = document.getElementById('val-vis');
+      const visEl   = document.getElementById('val-vis');
       const visRing = document.getElementById('ring-vis');
-      if (visEl) visEl.textContent = visVal;
-      if (visRing) visRing.style.strokeDashoffset = circ * (1 - visVal / 100);
-      document.getElementById('badge-vis').innerHTML =
+      const badgeVis = document.getElementById('badge-vis');
+      if (visEl)    visEl.textContent = visVal;
+      if (visRing)  visRing.style.strokeDashoffset = circ * (1 - visVal / 100);
+      if (badgeVis) badgeVis.innerHTML =
         `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(visVal).color}20; color:${TRIBE.interpretScore(visVal).color}; border-color:${TRIBE.interpretScore(visVal).color}40;">${TRIBE.interpretScore(visVal).label}</span>`;
 
       // Session params
-      const pDur = document.getElementById('p-dur');
+      const pDur    = document.getElementById('p-dur');
       const pThresh = document.getElementById('p-thresh');
-      const pDom = document.getElementById('p-dom');
-      if (pDur) pDur.textContent = (data.recommended_duration || 25) + ' min';
-      if (pThresh) pThresh.textContent = (76 - (data.executive / 100) * 18).toFixed(0) + '%';
-      if (pDom) pDom.textContent = data.dominant_region || 'Executive';
+      const pDom    = document.getElementById('p-dom');
+      if (pDur)    pDur.textContent    = (safe(data.recommended_duration, 25)) + ' min';
+      if (pThresh) pThresh.textContent = (76 - (execVal / 100) * 18).toFixed(0) + '%';
+      if (pDom)    pDom.textContent    = safe(data.dominant_region, 'Executive');
 
-      // Update TRIBE engine for dashboard sync
-      TRIBE.updateFromFirebase({
-        cds_executive: data.executive,
-        cds_language: data.language,
-        cds_visual: data.visual,
-        recommended_duration: data.recommended_duration,
-        dominant_region: data.dominant_region,
-        material: data.material,
-        tribe_mode: data.tribe_mode
-      });
+      // ── REMOVED: TRIBE.updateFromFirebase() — was causing infinite loop ──
+      // Calling updateFromFirebase() here triggers TRIBE subscribers
+      // which call updateUI() again → stack overflow.
+      // Instead, call TRIBE.updateFromFirebase() ONLY from the polling
+      // handler below, after updateUI() has already returned.
 
-      console.log('[StudyTwin] UI updated with real CDS scores:', data);
+      console.log('[StudyTwin brain-map] DOM updated:', { execVal, langVal, visVal });
     }
 
-    // ── TRIBE SUBSCRIPTION (for real-time Firebase updates) ──────
+    // ── TRIBE SUBSCRIPTION ───────────────────────────────────────
+    // Guard flag: prevents the subscription from firing while we are
+    // already inside updateUI (avoids any remaining re-entry risk)
+    let _tribeUpdating = false;
     TRIBE.subscribe(data => {
-      updateUI(data);
+      if (_tribeUpdating) return;  // block re-entry
+      _tribeUpdating = true;
+      updateUI(data);              // safe: updateUI no longer calls TRIBE back
+      _tribeUpdating = false;
     });
 
     // ── ST SUBSCRIPTION (live biosignal routing) ─────────────────
@@ -1003,6 +1022,7 @@
     // ── INITIAL LOAD — populate rings from Firebase if data exists ─
     window.addEventListener('load', () => {
       setTimeout(() => {
+        // updateUI only — no TRIBE state change, no loop risk
         updateUI(TRIBE.get());
       }, 800);
     });
