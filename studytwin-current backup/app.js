@@ -374,7 +374,7 @@ function initAntigravityBrain(THREE, canvas) {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
 
   // STABILITY FIX
-  camera.position.z = 8
+  camera.position.z = 10
 
   // ── CORE GLOW (PointLight) ──
   const coreLight = new THREE.PointLight(0x2563EB, 3, 10)
@@ -527,12 +527,15 @@ function initAntigravityBrain(THREE, canvas) {
 
   function resize() {
     if (!renderer || !camera || !canvas) return
-    const w = canvas.clientWidth, h = canvas.clientHeight
+    const parent = canvas.parentElement || document.body;
+    const w = parent.clientWidth || 300;
+    const h = parent.clientHeight || 300;
     renderer.setSize(w, h, false)
     camera.aspect = w / h; camera.updateProjectionMatrix()
   }
   window.addEventListener('resize', resize)
-  resize()
+  // Ensure we resize on next tick to capture parent dimensions
+  setTimeout(resize, 0);
   ST_Engine.add(animate)
 
   return { setColor, triggerNeuralSpike }
@@ -697,3 +700,52 @@ window.initAntigravityBrain = initAntigravityBrain;
 window.renderNav = renderNav;
 window.renderFooter = renderFooter;
 window.initScrollReveal = initScrollReveal;
+
+window.initLoadChart = function() {
+  const canvas = document.getElementById('loadChart');
+  if (!canvas) return null;
+  const ctx = canvas.getContext('2d');
+  
+  if (window.Chart) {
+    Chart.defaults.color = '#9CA3AF';
+    Chart.defaults.font.family = "'Inter',sans-serif";
+    Chart.defaults.font.size = 11;
+  }
+  
+  const g = ctx.createLinearGradient(0, 0, 0, 148);
+  g.addColorStop(0, 'rgba(37,99,235,0.18)'); 
+  g.addColorStop(1, 'rgba(37,99,235,0)');
+  
+  // 'zero' dataset initialized
+  const zeroData = Array(90).fill(0);
+  
+  return new Chart(ctx, {
+    type: 'line',
+    data: { 
+      labels: Array(90).fill(''), 
+      datasets: [{ 
+        data: zeroData, 
+        borderColor: '#2563EB', 
+        borderWidth: 2, 
+        backgroundColor: g, 
+        fill: true, 
+        tension: 0.4, 
+        pointRadius: 0, 
+        spanGaps: false 
+      }] 
+    },
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false,
+      animation: false, 
+      scales: { 
+        y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { stepSize: 25 } }, 
+        x: { display: false } 
+      }, 
+      plugins: { 
+        legend: { display: false }, 
+        tooltip: { enabled: false } 
+      } 
+    }
+  });
+};

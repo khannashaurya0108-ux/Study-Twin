@@ -803,24 +803,33 @@
         <!-- LEFT: Chart + Brain -->
         <div style="display:flex;flex-direction:column;gap:18px;">
           <!-- Chart -->
-          <div class="panel">
+          <!-- Chart -->
+          <div class="panel dashboard-card">
             <div class="panel-head">
               <span class="panel-title">Cognitive Load — last 3 minutes</span>
               <span class="panel-tag" style="display:flex;align-items:center;gap:5px;">
                 <div class="pulse"></div>2s resolution
               </span>
             </div>
-            <div class="chart-canvas-wrap">
-              <canvas id="cli-chart" height="148"></canvas>
+            <div class="chart-canvas-wrap" style="position: relative; height: 148px; width: 100%;">
+              <div id="chart-fallback" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 2; font-size: 13px; color: var(--ink4);">
+                <div class="pulse" style="margin-right: 8px;"></div> Awaiting Biosignal...
+              </div>
+              <canvas id="loadChart" style="position: relative; z-index: 1;"></canvas>
             </div>
           </div>
           <!-- 3D Brain -->
-          <div class="brain-panel">
+          <div class="brain-panel dashboard-card" style="position: relative;">
             <div class="brain-panel-head">
               <span class="panel-title">Cognitive Digital Twin</span>
               <span class="panel-tag">Reacts live to your state</span>
             </div>
-            <canvas id="dash-canvas" style="margin-top:50px;width:100%;height:280px;display:block;"></canvas>
+            <div id="canvas-container" style="margin-top:50px;">
+              <div id="brain-fallback" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 2; font-size: 13px; color: var(--ink4);">
+                <div class="pulse" style="margin-right: 8px;"></div> Awaiting Biosignal...
+              </div>
+              <canvas id="brainModel" style="position: relative; z-index: 1;"></canvas>
+            </div>
             <div class="brain-bottom">
               <div class="bo-card">
                 <div class="bo-label">Your Load</div>
@@ -1165,18 +1174,8 @@
     }, 1000)
 
     // ── AREA CHART (monochrome Cobalt) ──
-    const cliHistory = Array(90).fill(null)
-    Chart.defaults.color = '#9CA3AF'
-    Chart.defaults.font.family = "'Inter',sans-serif"
-    Chart.defaults.font.size = 11
-    const cliCtx = document.getElementById('cli-chart').getContext('2d')
-    const cliGrad = cliCtx.createLinearGradient(0, 0, 0, 148)
-    cliGrad.addColorStop(0, 'rgba(37,99,235,0.18)'); cliGrad.addColorStop(1, 'rgba(37,99,235,0)')
-    const cliChart = new Chart(cliCtx, {
-      type: 'line',
-      data: { labels: Array(90).fill(''), datasets: [{ data: cliHistory, borderColor: '#2563EB', borderWidth: 2, backgroundColor: cliGrad, fill: true, tension: 0.4, pointRadius: 0, spanGaps: false }] },
-      options: { responsive: true, animation: false, scales: { y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { stepSize: 25 } }, x: { display: false } }, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
-    })
+    const cliHistory = Array(90).fill(0);
+    const cliChart = window.initLoadChart ? window.initLoadChart() : null;
 
     // ── POMODORO ──
     let pomoTotal = TRIBE.get().recommended_duration * 60, pomoElapsed = 0, pomoPhase = 'focus'
@@ -1199,7 +1198,7 @@
     let dashBrain = null
     loadThree().then(THREE => {
       console.log("Neural Twin Engine Ready")
-      dashBrain = initAntigravityBrain(THREE, document.getElementById('dash-canvas'))
+      dashBrain = initAntigravityBrain(THREE, document.getElementById('brainModel'))
     }).catch(err => console.error(err))
 
     // ── INSIGHTS ──
@@ -1262,14 +1261,26 @@
       const bb = document.getElementById('bo-badge')
       if (bb) { bb.textContent = ST.label(d.state); bb.className = 'badge badge-' + cls }
 
+      // Hide fallbacks on real data
+      const cFb = document.getElementById('chart-fallback');
+      if (cFb) cFb.style.display = 'none';
+      const bFb = document.getElementById('brain-fallback');
+      if (bFb) bFb.style.display = 'none';
+
       // Chart
       cliHistory.push(Math.round(d.cli)); cliHistory.shift()
-      cliChart.data.datasets[0].data = [...cliHistory]
-      cliChart.data.datasets[0].borderColor = col
-      const g = cliCtx.createLinearGradient(0, 0, 0, 148)
-      g.addColorStop(0, col + '30'); g.addColorStop(1, col + '00')
-      cliChart.data.datasets[0].backgroundColor = g
-      cliChart.update('none')
+      if (cliChart) {
+        cliChart.data.datasets[0].data = [...cliHistory]
+        cliChart.data.datasets[0].borderColor = col
+        const cv = document.getElementById('loadChart');
+        if (cv) {
+          const cliCtx = cv.getContext('2d');
+          const g = cliCtx.createLinearGradient(0, 0, 0, 148)
+          g.addColorStop(0, col + '30'); g.addColorStop(1, col + '00')
+          cliChart.data.datasets[0].backgroundColor = g
+        }
+        cliChart.update('none')
+      }
 
       // Raw sensors
       set('r-gsr', d.gsrRaw); set('r-gsrd', d.gsrDev + '%')

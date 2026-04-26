@@ -21,20 +21,15 @@
       margin: 0 auto;
     }
 
-    @keyframes antigravity {
-
-      0%,
-      100% {
-        transform: translateY(0);
-      }
-
-      50% {
-        transform: translateY(-15px);
-      }
+    @keyframes butterFloat {
+      0% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -12px, 0); }
+      100% { transform: translate3d(0, 0, 0); }
     }
 
     .hero-float {
-      animation: antigravity 6s var(--ease) infinite;
+      animation: butterFloat 5s ease-in-out infinite;
+      will-change: transform;
       display: inline-block;
     }
 
@@ -90,24 +85,80 @@
       margin: 48px 0 64px;
     }
 
-    .hero-mini-stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      border: 1px solid var(--border);
-      border-radius: var(--r-xl);
-      overflow: hidden;
-      background: var(--bg2);
-      box-shadow: var(--shadow);
+    .stats-container {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 24px;
+      padding: 30px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.04);
+      max-width: 900px;
+      margin: 0;
+      backface-visibility: hidden;
+      perspective: 1000px;
+      transform: translateZ(0);
     }
 
-    .hms-cell {
-      padding: 24px;
-      background: var(--bg2);
-      border-right: 1px solid var(--border);
+    .stat-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 0 20px;
+      position: relative;
     }
 
-    .hms-cell:last-child {
-      border-right: none;
+    /* Soft gradient dividers — 70% height, faded edges */
+    .stat-group:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: -10px;
+      top: 15%;
+      height: 70%;
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, #e0e0e0, transparent);
+    }
+
+    .stat-label {
+      font-family: var(--ff);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #8e8e93;
+      margin-bottom: 8px;
+    }
+
+    .stat-value-container {
+      display: flex;
+      align-items: baseline;
+    }
+
+    .stat-number {
+      font-family: var(--ff);
+      font-size: 38px;
+      font-weight: 800;
+      color: #1d1d1f;
+      line-height: 1;
+    }
+
+    .stat-unit {
+      font-family: var(--ff);
+      font-size: 16px;
+      font-weight: 500;
+      color: #8e8e93;
+      margin-left: 4px;
+    }
+
+    /* Targeted gradient highlight for Load Index */
+    .stat-group:first-child .stat-number {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
 
@@ -338,16 +389,24 @@
         justify-content: center;
       }
 
-      .hero-mini-stats {
-        grid-template-columns: 1fr 1fr;
+      .stats-container {
+        flex-wrap: wrap;
+        padding: 24px 20px;
+        gap: 28px 0;
+        justify-content: flex-start;
       }
 
-      .hms-cell:nth-child(2) {
-        border-right: none;
+      .stat-group {
+        flex: 1 1 45%;
+        padding: 0 16px;
       }
 
-      .hms-cell:nth-child(n+3) {
-        border-top: 1px solid var(--border);
+      .stat-group:not(:last-child)::after {
+        display: none;
+      }
+
+      .stat-number {
+        font-size: 30px;
       }
 
       .strip-grid {
@@ -390,7 +449,7 @@
 
 <body data-page="index">
   <canvas id="fluid-canvas"
-    style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
+    style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4; image-rendering: -webkit-optimize-contrast;"></canvas>
   <div id="_nav"></div>
   <div class="page">
 
@@ -427,22 +486,33 @@
             <a href="how-it-works.html" class="btn-ghost" style="padding: 14px 28px; font-size: 15px;">How it works
               →</a>
           </div>
-          <div class="hero-mini-stats">
-            <div class="hms-cell">
-              <div class="data-label" style="margin-bottom:12px;">Load Index</div>
-              <div class="data-val" id="h-cli">42</div>
+          <div class="stats-container">
+            <div class="stat-group">
+              <span class="stat-label">LOAD INDEX</span>
+              <div class="stat-value-container">
+                <span class="stat-number" id="h-cli">42</span>
+                <span class="stat-unit" id="h-cli-unit">/100</span>
+              </div>
             </div>
-            <div class="hms-cell">
-              <div class="data-label" style="margin-bottom:12px;">Heart rate</div>
-              <div class="data-val" style="color:var(--ink2)" id="h-hr">68 bpm</div>
+            <div class="stat-group">
+              <span class="stat-label">HEART RATE</span>
+              <div class="stat-value-container">
+                <span class="stat-number" id="h-hr">68</span>
+                <span class="stat-unit" id="h-hr-unit">bpm</span>
+              </div>
             </div>
-            <div class="hms-cell">
-              <div class="data-label" style="margin-bottom:12px;">Blink rate</div>
-              <div class="data-val" style="color:var(--ink2)" id="h-blink">13.8 /min</div>
+            <div class="stat-group">
+              <span class="stat-label">BLINK RATE</span>
+              <div class="stat-value-container">
+                <span class="stat-number" id="h-blink">13.8</span>
+                <span class="stat-unit" id="h-blink-unit">/min</span>
+              </div>
             </div>
-            <div class="hms-cell">
-              <div class="data-label" style="margin-bottom:12px;">Regions Mapped</div>
-              <div class="data-val" style="color:var(--amber)">3</div>
+            <div class="stat-group">
+              <span class="stat-label">REGIONS MAPPED</span>
+              <div class="stat-value-container">
+                <span class="stat-number" style="color:var(--amber)">3</span>
+              </div>
             </div>
           </div>
         </div>
@@ -782,9 +852,9 @@
       if (badge) { badge.textContent = ST.label(data.state); badge.className = 'badge badge-' + data.state.replace('overloaded', 'over') }
 
       // Hero mini-stats
-      update('h-cli', Math.round(data.cli)); setCol('h-cli', col)
-      update('h-hr', data.hr + ' bpm')
-      update('h-blink', data.blink + ' /min')
+      update('h-cli', Math.round(data.cli))
+      update('h-hr', data.hr)
+      update('h-blink', data.blink)
 
       // Telemetry strip
       update('s-hr', data.hr + ' bpm'); update('s-hrv', data.hrv + ' ms')
