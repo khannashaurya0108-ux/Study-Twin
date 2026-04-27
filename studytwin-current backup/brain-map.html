@@ -389,7 +389,6 @@
       <div class="upload-card">
         <div class="drop-zone" id="drop-zone" style="cursor:pointer;"
           onclick="document.getElementById('material-file-input').click()">
-          <input type="file" id="file-input" accept=".pdf,.txt" style="display:none">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
             style="margin-bottom: 12px; opacity: 0.5;">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -405,7 +404,7 @@
         </button>
         <div class="upload-status" id="upload-status">
           <div class="status-dot"></div>
-          <span id="status-text">Current: Advanced Signals & Systems — L14.pdf</span>
+          <span id="status-text">No material selected. Drop a PDF or click to choose.</span>
         </div>
       </div>
     </section>
@@ -424,13 +423,13 @@
         <div class="cds-ring-wrap">
           <svg class="ring-svg" width="140" height="140">
             <circle class="ring-bg" cx="70" cy="70" r="60" />
-            <circle id="ring-exec" class="ring-fill" cx="70" cy="70" r="60" style="stroke: var(--amber); stroke-dashoffset: 67.86;" />
+            <circle id="ring-exec" class="ring-fill" cx="70" cy="70" r="60" style="stroke: var(--amber);" />
           </svg>
-          <div class="ring-text" id="val-exec" style="color: var(--amber);">82</div>
+          <div class="ring-text" id="val-exec" style="color: var(--amber);">0</div>
         </div>
         <h2 class="region-title">Executive Network</h2>
         <div class="region-subtitle">Prefrontal Cortex · Anterior Cingulate</div>
-        <div id="badge-exec"><span class="badge badge-focused" style="background:#DC262620; color:#DC2626; border-color:#DC262640;">Critical</span></div>
+        <div id="badge-exec"></div>
         <p class="ink3" style="font-size: 14px; line-height: 1.6; margin-top: 12px;">
           Manages working memory, logical sequencing, and goal-directed focus. High demand leads to rapid mental
           fatigue.
@@ -453,13 +452,13 @@
         <div class="cds-ring-wrap">
           <svg class="ring-svg" width="140" height="140">
             <circle class="ring-bg" cx="70" cy="70" r="60" />
-            <circle id="ring-lang" class="ring-fill" cx="70" cy="70" r="60" style="stroke: var(--cobalt); stroke-dashoffset: 124.41;" />
+            <circle id="ring-lang" class="ring-fill" cx="70" cy="70" r="60" style="stroke: var(--cobalt);" />
           </svg>
-          <div class="ring-text" id="val-lang" style="color: var(--cobalt);">67</div>
+          <div class="ring-text" id="val-lang" style="color: var(--cobalt);">0</div>
         </div>
         <h2 class="region-title">Language Network</h2>
         <div class="region-subtitle">Broca's · Wernicke's · Superior Temporal</div>
-        <div id="badge-lang"><span class="badge badge-focused" style="background:#D9770620; color:#D97706; border-color:#D9770640;">High</span></div>
+        <div id="badge-lang"></div>
         <p class="ink3" style="font-size: 14px; line-height: 1.6; margin-top: 12px;">
           Processes semantic meaning, syntax, and verbal encoding. High demand occurs during dense reading or writing.
         </p>
@@ -481,13 +480,13 @@
         <div class="cds-ring-wrap">
           <svg class="ring-svg" width="140" height="140">
             <circle class="ring-bg" cx="70" cy="70" r="60" />
-            <circle id="ring-vis" class="ring-fill" cx="70" cy="70" r="60" style="stroke: var(--emerald); stroke-dashoffset: 248.82;" />
+            <circle id="ring-vis" class="ring-fill" cx="70" cy="70" r="60" style="stroke: var(--emerald);" />
           </svg>
-          <div class="ring-text" id="val-vis" style="color: var(--emerald);">34</div>
+          <div class="ring-text" id="val-vis" style="color: var(--emerald);">0</div>
         </div>
         <h2 class="region-title">Visual Network</h2>
         <div class="region-subtitle">Occipital · Ventral Visual Stream</div>
-        <div id="badge-vis"><span class="badge badge-focused" style="background:#2563EB20; color:#2563EB; border-color:#2563EB40;">Moderate</span></div>
+        <div id="badge-vis"></div>
         <p class="ink3" style="font-size: 14px; line-height: 1.6; margin-top: 12px;">
           Handles spatial reasoning, pattern recognition, and mental imagery. Loaded by diagrams and 3D visualisations.
         </p>
@@ -702,9 +701,8 @@
   <script src="app.js"></script>
   <script>
     // ── SERVER URL ──────────────────────────────────────────────
-    // LOCAL DEV:  'http://localhost:3001'
-    // PRODUCTION: your Render URL (update this after deploying to Render)
-    // ⬇ UPDATE THIS LINE after you get your Render URL ⬇
+    // LOCAL DEV:  change to 'http://localhost:3001'
+    // PRODUCTION: your Render URL
     const SERVER_URL = 'https://study-twin.onrender.com';
 
     // ── UPLOAD STATE ────────────────────────────────────────────
@@ -830,23 +828,25 @@
               clearInterval(pollingTimer);
               pollingTimer = null;
 
-              // ── Step 1: Update DOM only (no TRIBE state change inside) ──
               const meta = statusData.metadata;
               if (meta) {
+                // Step 1: update DOM (safe — no TRIBE calls inside updateUI)
                 updateUI({
                   executive:            meta.cds_executive  || 82,
                   language:             meta.cds_language   || 67,
                   visual:               meta.cds_visual     || 34,
                   recommended_duration: meta.recommended_duration || 25,
                   dominant_region:      meta.dominant_region || 'Executive',
-                  material:             meta.material || selectedFile?.name || 'Study Material',
+                  material:             meta.material || (selectedFile ? selectedFile.name : 'Study Material'),
                   tribe_mode:           meta.tribe_mode || 'lite_nlp'
                 });
-
-                // ── Step 2: Update TRIBE internal state AFTER DOM update ──
-                // This is the ONLY safe place to call updateFromFirebase.
-                // updateUI has already returned — no loop possible.
-                _tribeUpdating = true;          // block the subscribe re-entry
+                // Step 2: update status text with real material name
+                const statusEl = document.getElementById('status-text');
+                if (statusEl && meta.material) {
+                  statusEl.textContent = 'Current: ' + meta.material;
+                }
+                // Step 3: sync TRIBE internal state AFTER updateUI returns
+                _tribeUpdating = true;
                 TRIBE.updateFromFirebase(meta);
                 _tribeUpdating = false;
               }
@@ -878,11 +878,8 @@
       }
     });
 
-    // ── UPDATE DOM ONLY — NO TRIBE STATE CHANGES INSIDE ─────────
-    // *** BUG FIX: updateUI() must ONLY touch the DOM.            ***
-    // *** It must NEVER call TRIBE.updateFromFirebase() because   ***
-    // *** that triggers TRIBE subscribers → calls updateUI again  ***
-    // *** → Maximum call stack size exceeded (infinite loop)      ***
+    // ── UPDATE UI WITH REAL CDS SCORES ──────────────────────────
+    // ── updateUI: DOM ONLY — never calls TRIBE back (prevents infinite loop) ──
     function updateUI(data) {
       if (!data) return;
       const circ = 377;
@@ -893,57 +890,55 @@
       const visVal  = safe(data.visual,    safe(data.cds_visual,    34));
 
       // Executive ring
-      const execEl   = document.getElementById('val-exec');
-      const execRing = document.getElementById('ring-exec');
+      const execEl    = document.getElementById('val-exec');
+      const execRing  = document.getElementById('ring-exec');
       const badgeExec = document.getElementById('badge-exec');
       if (execEl)    execEl.textContent = execVal;
       if (execRing)  execRing.style.strokeDashoffset = circ * (1 - execVal / 100);
-      if (badgeExec) badgeExec.innerHTML =
-        `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(execVal).color}20; color:${TRIBE.interpretScore(execVal).color}; border-color:${TRIBE.interpretScore(execVal).color}40;">${TRIBE.interpretScore(execVal).label}</span>`;
+      if (badgeExec) {
+        const ei = TRIBE.interpretScore(execVal);
+        badgeExec.innerHTML = `<span class="badge badge-focused" style="background:${ei.color}20;color:${ei.color};border-color:${ei.color}40;">${ei.label}</span>`;
+      }
 
       // Language ring
-      const langEl   = document.getElementById('val-lang');
-      const langRing = document.getElementById('ring-lang');
+      const langEl    = document.getElementById('val-lang');
+      const langRing  = document.getElementById('ring-lang');
       const badgeLang = document.getElementById('badge-lang');
       if (langEl)    langEl.textContent = langVal;
       if (langRing)  langRing.style.strokeDashoffset = circ * (1 - langVal / 100);
-      if (badgeLang) badgeLang.innerHTML =
-        `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(langVal).color}20; color:${TRIBE.interpretScore(langVal).color}; border-color:${TRIBE.interpretScore(langVal).color}40;">${TRIBE.interpretScore(langVal).label}</span>`;
+      if (badgeLang) {
+        const li = TRIBE.interpretScore(langVal);
+        badgeLang.innerHTML = `<span class="badge badge-focused" style="background:${li.color}20;color:${li.color};border-color:${li.color}40;">${li.label}</span>`;
+      }
 
       // Visual ring
-      const visEl   = document.getElementById('val-vis');
-      const visRing = document.getElementById('ring-vis');
+      const visEl    = document.getElementById('val-vis');
+      const visRing  = document.getElementById('ring-vis');
       const badgeVis = document.getElementById('badge-vis');
       if (visEl)    visEl.textContent = visVal;
       if (visRing)  visRing.style.strokeDashoffset = circ * (1 - visVal / 100);
-      if (badgeVis) badgeVis.innerHTML =
-        `<span class="badge badge-focused" style="background:${TRIBE.interpretScore(visVal).color}20; color:${TRIBE.interpretScore(visVal).color}; border-color:${TRIBE.interpretScore(visVal).color}40;">${TRIBE.interpretScore(visVal).label}</span>`;
+      if (badgeVis) {
+        const vi = TRIBE.interpretScore(visVal);
+        badgeVis.innerHTML = `<span class="badge badge-focused" style="background:${vi.color}20;color:${vi.color};border-color:${vi.color}40;">${vi.label}</span>`;
+      }
 
       // Session params
       const pDur    = document.getElementById('p-dur');
       const pThresh = document.getElementById('p-thresh');
       const pDom    = document.getElementById('p-dom');
-      if (pDur)    pDur.textContent    = (safe(data.recommended_duration, 25)) + ' min';
+      if (pDur)    pDur.textContent    = safe(data.recommended_duration, 25) + ' min';
       if (pThresh) pThresh.textContent = (76 - (execVal / 100) * 18).toFixed(0) + '%';
       if (pDom)    pDom.textContent    = safe(data.dominant_region, 'Executive');
-
-      // ── REMOVED: TRIBE.updateFromFirebase() — was causing infinite loop ──
-      // Calling updateFromFirebase() here triggers TRIBE subscribers
-      // which call updateUI() again → stack overflow.
-      // Instead, call TRIBE.updateFromFirebase() ONLY from the polling
-      // handler below, after updateUI() has already returned.
-
-      console.log('[StudyTwin brain-map] DOM updated:', { execVal, langVal, visVal });
+      // NOTE: DO NOT call TRIBE.updateFromFirebase here — causes infinite loop.
+      // It is called from the polling handler (after complete) and TRIBE.subscribe guard only.
     }
 
-    // ── TRIBE SUBSCRIPTION ───────────────────────────────────────
-    // Guard flag: prevents the subscription from firing while we are
-    // already inside updateUI (avoids any remaining re-entry risk)
+    // ── TRIBE SUBSCRIPTION — guarded to prevent infinite re-entry ──
     let _tribeUpdating = false;
     TRIBE.subscribe(data => {
-      if (_tribeUpdating) return;  // block re-entry
+      if (_tribeUpdating) return;
       _tribeUpdating = true;
-      updateUI(data);              // safe: updateUI no longer calls TRIBE back
+      updateUI(data);
       _tribeUpdating = false;
     });
 
@@ -1019,11 +1014,16 @@
       });
     }
 
-    // ── INITIAL LOAD — populate rings from Firebase if data exists ─
+    // ── INITIAL LOAD — show current TRIBE data on page open ────────
     window.addEventListener('load', () => {
       setTimeout(() => {
-        // updateUI only — no TRIBE state change, no loop risk
-        updateUI(TRIBE.get());
+        const current = TRIBE.get();
+        updateUI(current);
+        // Show current material name if available
+        const statusEl = document.getElementById('status-text');
+        if (statusEl && current.material && current.material !== 'Advanced Signals & Systems — Lecture 14') {
+          statusEl.textContent = 'Current: ' + current.material;
+        }
       }, 800);
     });
   </script>
