@@ -141,14 +141,15 @@ function connectFirebase() {
 
         db.ref('/sessions/' + user.uid + '/metadata').once('value', (snap) => {
           const meta = snap.val();
-          if (meta && meta.cds_executive !== undefined) {
+          if (meta && (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
             TRIBE.updateFromFirebase(meta);
           }
         });
 
         db.ref('/sessions/' + user.uid + '/metadata').on('value', (snap) => {
           const meta = snap.val();
-          if (meta && meta.tribe_mode && meta.tribe_mode !== 'default') {
+          if (meta && meta.tribe_mode && meta.tribe_mode !== 'default' &&
+              (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
             TRIBE.updateFromFirebase(meta);
           }
         });
@@ -660,10 +661,10 @@ const TRIBE = (() => {
     _cds = {
       ..._cds,
       ...meta,
-      // Map cds_* to plain names for backward compat
-      executive: meta.cds_executive ?? _cds.executive,
-      language: meta.cds_language ?? _cds.language,
-      visual: meta.cds_visual ?? _cds.visual,
+      // Map cds_* to plain names for backward compat — use || to reject 0 (means unanalysed)
+      executive: meta.cds_executive || _cds.executive,
+      language: meta.cds_language || _cds.language,
+      visual: meta.cds_visual || _cds.visual,
       analysed: true
     }
     computeParams()
