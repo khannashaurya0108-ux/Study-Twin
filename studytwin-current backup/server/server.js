@@ -12,10 +12,10 @@
 
 require('dotenv').config();
 const express = require('express');
-const multer  = require('multer');
-const cors    = require('cors');
-const axios   = require('axios');
-const admin   = require('firebase-admin');
+const multer = require('multer');
+const cors = require('cors');
+const axios = require('axios');
+const admin = require('firebase-admin');
 
 const app = express();
 
@@ -35,7 +35,7 @@ try {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
   if (!admin.apps.length) {
     admin.initializeApp({
-      credential:  admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert(serviceAccount),
       databaseURL: process.env.FIREBASE_DATABASE_URL
     });
   }
@@ -64,7 +64,7 @@ async function extractTextFromBuffer(buffer, mimetype, filename) {
     name.endsWith('.docx') || name.endsWith('.doc')
   ) {
     const mammoth = require('mammoth');
-    const result  = await mammoth.extractRawText({ buffer });
+    const result = await mammoth.extractRawText({ buffer });
     return result.value;
   }
 
@@ -74,8 +74,8 @@ async function extractTextFromBuffer(buffer, mimetype, filename) {
 
 // ── KAGGLE TRIGGER ──────────────────────────────────────────────
 async function triggerKaggleNotebook() {
-  const username   = process.env.KAGGLE_USERNAME;
-  const key        = process.env.KAGGLE_KEY;
+  const username = process.env.KAGGLE_USERNAME;
+  const key = process.env.KAGGLE_KEY;
   const kernelSlug = process.env.KAGGLE_KERNEL_SLUG;
 
   if (!username || !key || !kernelSlug) {
@@ -137,6 +137,92 @@ async function callGeminiInsights(prompt) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
 }
 
+// ── LITE NLP CDS ANALYSIS (replaces Kaggle for base mode) ──────────────────
+const EXECUTIVE_WORDS = new Set([
+  'algorithm', 'solve', 'derive', 'prove', 'optimize', 'analyze', 'calculate',
+  'theorem', 'equation', 'formula', 'logic', 'reasoning', 'compute', 'function',
+  'integral', 'differential', 'matrix', 'vector', 'probability', 'hypothesis',
+  'experiment', 'method', 'procedure', 'strategy', 'evaluate', 'determine',
+  'implement', 'design', 'architecture', 'framework', 'system', 'module', 'component',
+  'circuit', 'signal', 'frequency', 'amplitude', 'voltage', 'current', 'resistance',
+  'transform', 'convolution', 'fourier', 'laplace', 'polynomial', 'coefficient',
+  'derivative', 'gradient', 'convergence', 'iteration', 'recursion', 'complexity',
+  'invariant', 'constraint', 'parameter', 'variable', 'operator', 'eigenvalue'
+]);
+
+const LANGUAGE_WORDS = new Set([
+  'define', 'explain', 'describe', 'discuss', 'state', 'outline', 'summarize',
+  'write', 'essay', 'paragraph', 'sentence', 'grammar', 'vocabulary', 'concept',
+  'theory', 'principle', 'definition', 'meaning', 'context', 'interpret',
+  'literary', 'narrative', 'argument', 'evidence', 'source', 'reference',
+  'documentation', 'report', 'review', 'introduction', 'conclusion', 'compare',
+  'contrast', 'analysis', 'significance', 'implication', 'perspective', 'describe',
+  'elaborate', 'justify', 'quote', 'paraphrase', 'annotate', 'cite', 'mention'
+]);
+
+const VISUAL_WORDS = new Set([
+  'diagram', 'figure', 'graph', 'plot', 'chart', 'image', 'picture', 'draw',
+  'sketch', 'illustration', 'visualize', 'spatial', 'geometry', 'shape',
+  'triangle', 'circle', 'rectangle', 'angle', 'coordinate', 'axis', 'curve',
+  'topology', 'map', 'render', 'display', 'pixel', 'pattern', 'symmetry',
+  'transform', 'rotation', 'reflection', 'simulation', 'model', 'schematic',
+  'waveform', 'spectrum', 'histogram', 'contour', 'mesh', 'cross-section'
+]);
+
+function computeLiteNLP(text, title = '') {
+  const words = text.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+  const total = Math.max(words.length, 1);
+
+  let execCount = 0, langCount = 0, visCount = 0;
+  for (const w of words) {
+    if (EXECUTIVE_WORDS.has(w)) execCount++;
+    if (LANGUAGE_WORDS.has(w)) langCount++;
+    if (VISUAL_WORDS.has(w)) visCount++;
+  }
+
+  // Density → score: calibrated so ~0.006 density ≈ 70 score
+  const toScore = (count) => {
+    const density = count / total;
+    return Math.min(100, Math.max(5, Math.round(density * 9000 + 15)));
+  };
+
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const avgSentLen = sentences.length
+    ? sentences.reduce((s, ln) => s + ln.split(/\s+/).length, 0) / sentences.length
+    : 15;
+
+  return {
+    cds_executive: toScore(execCount),
+    cds_language: toScore(langCount),
+    cds_visual: visCount > 1 ? toScore(visCount) : 10,
+    tribe_mode: 'lite_nlp',
+    word_count: total,
+    sentence_count: sentences.length,
+    avg_sent_len: Math.round(avgSentLen * 10) / 10
+  };
+}
+
+function computeSessionParams(cds) {
+  const exec = cds.cds_executive;
+  const regions = {
+    Executive: exec,
+    Language: cds.cds_language,
+    Visual: cds.cds_visual
+  };
+  const dominant = Object.entries(regions).sort(([, a], [, b]) => b - a)[0][0];
+  const recs = {
+    Executive: 'Switch to visual content — diagrams, flowcharts, or summary videos to rest the prefrontal cortex.',
+    Language: 'Switch to numerical content — equations, graphs, or problem sets. Reduce dense reading.',
+    Visual: 'Switch to audio or text-light reading. Reduce diagram and animation-heavy material.'
+  };
+  return {
+    dominant_region: dominant,
+    recommended_duration: Math.round(32 - (exec / 100) * 16),   // 16–32 min
+    overload_threshold: Math.round(80 - (exec / 100) * 22),   // 58–80
+    routing_recommendation: recs[dominant]
+  };
+}
+
 // ══════════════════════════════════════════════════════════════
 //  ROUTES
 // ══════════════════════════════════════════════════════════════
@@ -144,16 +230,14 @@ async function callGeminiInsights(prompt) {
 // GET /health
 app.get('/health', (req, res) => {
   res.json({
-    status:    'ok',
-    firebase:  !!db,
-    kaggle:    !!(process.env.KAGGLE_USERNAME && process.env.KAGGLE_KEY),
+    status: 'ok',
+    firebase: !!db,
+    kaggle: !!(process.env.KAGGLE_USERNAME && process.env.KAGGLE_KEY),
     gemini_ai: !!process.env.GEMINI_API_KEY
   });
 });
 
 // POST /analyze
-// Header: Authorization: {uid}
-// Body: multipart with file (PDF/DOCX/TXT) or text field + title
 app.post('/analyze', upload.single('file'), async (req, res) => {
   try {
     const uid = req.headers.authorization || req.body.uid;
@@ -161,12 +245,12 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'User UID required in Authorization header or body' });
     }
 
-    let text  = '';
+    let text = '';
     let title = req.body.title || 'Study Material';
 
     if (req.file) {
       console.log(`Extracting text from: ${req.file.originalname} (${req.file.mimetype})`);
-      text  = await extractTextFromBuffer(req.file.buffer, req.file.mimetype, req.file.originalname);
+      text = await extractTextFromBuffer(req.file.buffer, req.file.mimetype, req.file.originalname);
       title = req.body.title || req.file.originalname.replace(/\.[^.]+$/, '');
     } else if (req.body.text) {
       text = req.body.text;
@@ -179,45 +263,61 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Could not extract text — file may be empty or image-only PDF' });
     }
 
-    // Truncate to 5000 chars for Kaggle LITE mode
     const truncated = text.length > 5000 ? text.substring(0, 5000) + '...' : text;
-    console.log(`Writing ${truncated.length} chars to Firebase for UID: ${uid.substring(0, 8)}...`);
+    console.log(`Processing ${truncated.length} chars for UID: ${uid.substring(0, 8)}...`);
 
     if (!db) {
       return res.status(500).json({ error: 'Firebase not configured. Check FIREBASE_SERVICE_ACCOUNT env var.' });
     }
 
-    // Write study text for Kaggle to read
+    // ── Write pending marker ──────────────────────────────────────────────────
     await db.ref(`/pending_analysis/${uid}`).set({
-      text:         truncated,
-      title:        title,
-      status:       'pending',
+      text: truncated,
+      title: title,
+      status: 'processing',
       submitted_at: Date.now(),
-      char_count:   truncated.length
+      char_count: truncated.length
     });
 
-    // Write config so Kaggle Cell 3 knows which UID to process
     await db.ref('/config/current_analysis').set({
-      uid:          uid,
-      status:       'pending',
-      submitted_at: Date.now(),
-      material:     title
+      uid, status: 'processing', submitted_at: Date.now(), material: title
     });
 
-    console.log('✅ Firebase write complete');
+    // ── Run LITE NLP analysis immediately (server-side, no Kaggle needed) ────
+    console.log('[TRIBE LITE] Running server-side NLP analysis...');
+    const cdsScores = computeLiteNLP(truncated, title);
+    const sessionParams = computeSessionParams(cdsScores);
 
-    const kaggleTriggered = await triggerKaggleNotebook();
+    const metadata = {
+      ...cdsScores,
+      ...sessionParams,
+      material: title,
+      analysed_at: Date.now(),
+      analysed_at_iso: new Date().toISOString(),
+      text_length: truncated.length
+    };
+
+    console.log('[TRIBE LITE] Scores:', JSON.stringify(cdsScores));
+
+    // ── Write metadata using Admin SDK (bypasses security rules) ─────────────
+    try {
+      await db.ref(`/sessions/${uid}/metadata`).set(metadata);
+      await db.ref(`/pending_analysis/${uid}`).update({ status: 'complete' });
+      console.log(`✅ Metadata written to Firebase for UID: ${uid.substring(0, 8)}`);
+    } catch (dbErr) {
+      console.error('Firebase metadata write error:', dbErr.message);
+    }
 
     res.status(202).json({
-      message:          'Analysis submitted',
-      uid:              uid,
-      title:            title,
-      chars_extracted:  truncated.length,
-      kaggle_triggered: kaggleTriggered,
-      note: kaggleTriggered
-        ? 'Kaggle notebook triggered — results in 3-8 minutes'
-        : 'Firebase updated — please run Kaggle notebook manually to see results',
-      estimated_minutes: 5
+      message: 'Analysis complete',
+      uid,
+      title,
+      chars_extracted: truncated.length,
+      kaggle_triggered: false,
+      lite_nlp_complete: true,
+      cds_preview: cdsScores,
+      note: 'Server-side LITE NLP analysis complete. Dashboard updates immediately.',
+      estimated_minutes: 0
     });
 
   } catch (err) {
@@ -232,7 +332,7 @@ app.get('/analyze/status/:uid', async (req, res) => {
   try {
     if (!db) return res.status(500).json({ error: 'Firebase not configured' });
 
-    const uid  = req.params.uid;
+    const uid = req.params.uid;
     const snap = await db.ref(`/pending_analysis/${uid}`).once('value');
     const data = snap.val();
 
@@ -264,23 +364,23 @@ app.post('/insights', async (req, res) => {
 
   try {
     const {
-      cli_history   = [],
-      gsr_history   = [],
+      cli_history = [],
+      gsr_history = [],
       rmssd_history = [],
-      cds_scores    = {},
+      cds_scores = {},
       current_state = 'focused',
-      blink_rate    = 13
+      blink_rate = 13
     } = req.body;
 
-    const avgCLI    = cli_history.length
+    const avgCLI = cli_history.length
       ? (cli_history.reduce((a, b) => a + b, 0) / cli_history.length).toFixed(1) : 50;
     const recentCLI = cli_history.length >= 10
       ? (cli_history.slice(-10).reduce((a, b) => a + b, 0) / 10).toFixed(1) : avgCLI;
-    const trend     = parseFloat(recentCLI) > parseFloat(avgCLI) + 5 ? 'rising'
-                    : parseFloat(recentCLI) < parseFloat(avgCLI) - 5 ? 'falling' : 'stable';
+    const trend = parseFloat(recentCLI) > parseFloat(avgCLI) + 5 ? 'rising'
+      : parseFloat(recentCLI) < parseFloat(avgCLI) - 5 ? 'falling' : 'stable';
 
     const lastHRV = rmssd_history.length ? rmssd_history[rmssd_history.length - 1] : null;
-    const lastGSR = gsr_history.length   ? gsr_history[gsr_history.length - 1]     : null;
+    const lastGSR = gsr_history.length ? gsr_history[gsr_history.length - 1] : null;
 
     const prompt = `You analyze biosignal data from a student using a cognitive load wearable.
 
@@ -331,5 +431,5 @@ app.listen(PORT, () => {
   console.log(`   Health check: http://localhost:${PORT}/health`);
   console.log(`   Firebase:  ${db ? '✅ connected' : '❌ not configured'}`);
   console.log(`   Kaggle:    ${process.env.KAGGLE_USERNAME ? '✅ credentials set' : '⚠ manual trigger only'}`);
-  console.log(`   Gemini AI: ${process.env.GEMINI_API_KEY  ? '✅ FREE key set' : '⚠ no key — using fallback'}\n`);
+  console.log(`   Gemini AI: ${process.env.GEMINI_API_KEY ? '✅ FREE key set' : '⚠ no key — using fallback'}\n`);
 });

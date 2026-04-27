@@ -773,14 +773,17 @@
       const formData = new FormData();
       formData.append('uid', uid);
 
+      let title = 'Study Material';
       if (selectedFile) {
         formData.append('file', selectedFile);
-        formData.append('title', selectedFile.name.replace(/\.[^.]+$/, ''));
+        title = selectedFile.name.replace(/\.[^.]+$/, '');
+        formData.append('title', title);
       } else {
         // Text input fallback
         const textVal = document.getElementById('study-text-input')?.value || '';
         formData.append('text', textVal);
-        formData.append('title', 'Pasted Study Material');
+        title = 'Pasted Study Material';
+        formData.append('title', title);
       }
 
       // ── SHOW LOADING UI ────────────────────────────────────────
@@ -806,14 +809,49 @@
 
         // ── SHOW POLLING UI ────────────────────────────────────
         btnText.textContent = 'Analysing…';
-        statusText.innerHTML = result.kaggle_triggered
-          ? `⏳ TRIBE running on Kaggle (~${result.estimated_minutes} min)…`
-          : `✅ Uploaded. <strong>Manually run your Kaggle notebook</strong> to process.`;
+        statusText.innerHTML = result.lite_nlp_complete
+          ? `⏳ Analysis done! Loading results...`
+          : result.kaggle_triggered
+            ? `⏳ TRIBE running on Kaggle (~${result.estimated_minutes} min)…`
+            : `✅ Uploaded. <strong>Manually run your Kaggle notebook</strong> to process.`;
 
         // ── START POLLING FIREBASE ─────────────────────────────
         // Poll every 10 seconds for up to 15 minutes
         let attempts = 0;
-        const maxAttempts = 90; // 90 × 10s = 15 min
+        const maxAttempts = 90;
+
+        // If LITE NLP ran on server, first poll quickly (results already in Firebase)
+        const firstPollDelay = result.lite_nlp_complete ? 2000 : 10000;
+        setTimeout(async () => {
+          try {
+            const statusResp = await fetch(`${SERVER_URL}/analyze/status/${uid}`);
+            const statusData = await statusResp.json();
+            attempts++;
+            if (statusData.status === 'complete') {
+              clearInterval(pollingTimer);
+              pollingTimer = null;
+              const meta = statusData.metadata;
+              if (meta) {
+                updateUI({
+                  executive: meta.cds_executive || 0,
+                  language: meta.cds_language || 0,
+                  visual: meta.cds_visual || 0,
+                  recommended_duration: meta.recommended_duration || 25,
+                  dominant_region: meta.dominant_region || 'Executive',
+                  material: meta.material || title
+                });
+                const statusEl = document.getElementById('status-text');
+                if (statusEl && meta.material) statusEl.textContent = 'Current: ' + meta.material;
+                _tribeUpdating = true;
+                TRIBE.updateFromFirebase(meta);
+                _tribeUpdating = false;
+              }
+              analyseBtn.disabled = false;
+              btnText.textContent = 'Analyse Material';
+              statusText.innerHTML = `Analysis complete ✅ <span style="color:#4ade80; margin-left:5px;">(LITE NLP mode)</span>`;
+            }
+          } catch (e) { console.warn('First poll error:', e.message); }
+        }, firstPollDelay);
 
         pollingTimer = setInterval(async () => {
           attempts++;
@@ -832,13 +870,13 @@
               if (meta) {
                 // Step 1: update DOM (safe — no TRIBE calls inside updateUI)
                 updateUI({
-                  executive:            meta.cds_executive  || 82,
-                  language:             meta.cds_language   || 67,
-                  visual:               meta.cds_visual     || 34,
+                  executive: meta.cds_executive || 82,
+                  language: meta.cds_language || 67,
+                  visual: meta.cds_visual || 34,
                   recommended_duration: meta.recommended_duration || 25,
-                  dominant_region:      meta.dominant_region || 'Executive',
-                  material:             meta.material || (selectedFile ? selectedFile.name : 'Study Material'),
-                  tribe_mode:           meta.tribe_mode || 'lite_nlp'
+                  dominant_region: meta.dominant_region || 'Executive',
+                  material: meta.material || (selectedFile ? selectedFile.name : 'Study Material'),
+                  tribe_mode: meta.tribe_mode || 'lite_nlp'
                 });
                 // Step 2: update status text with real material name
                 const statusEl = document.getElementById('status-text');
@@ -886,49 +924,49 @@
       const safe = (v, fb) => (v !== undefined && v !== null) ? v : fb;
 
       const execVal = safe(data.executive, safe(data.cds_executive, 82));
-      const langVal = safe(data.language,  safe(data.cds_language,  67));
-      const visVal  = safe(data.visual,    safe(data.cds_visual,    34));
+      const langVal = safe(data.language, safe(data.cds_language, 67));
+      const visVal = safe(data.visual, safe(data.cds_visual, 34));
 
       // Executive ring
-      const execEl    = document.getElementById('val-exec');
-      const execRing  = document.getElementById('ring-exec');
+      const execEl = document.getElementById('val-exec');
+      const execRing = document.getElementById('ring-exec');
       const badgeExec = document.getElementById('badge-exec');
-      if (execEl)    execEl.textContent = execVal;
-      if (execRing)  execRing.style.strokeDashoffset = circ * (1 - execVal / 100);
+      if (execEl) execEl.textContent = execVal;
+      if (execRing) execRing.style.strokeDashoffset = circ * (1 - execVal / 100);
       if (badgeExec) {
         const ei = TRIBE.interpretScore(execVal);
         badgeExec.innerHTML = `<span class="badge badge-focused" style="background:${ei.color}20;color:${ei.color};border-color:${ei.color}40;">${ei.label}</span>`;
       }
 
       // Language ring
-      const langEl    = document.getElementById('val-lang');
-      const langRing  = document.getElementById('ring-lang');
+      const langEl = document.getElementById('val-lang');
+      const langRing = document.getElementById('ring-lang');
       const badgeLang = document.getElementById('badge-lang');
-      if (langEl)    langEl.textContent = langVal;
-      if (langRing)  langRing.style.strokeDashoffset = circ * (1 - langVal / 100);
+      if (langEl) langEl.textContent = langVal;
+      if (langRing) langRing.style.strokeDashoffset = circ * (1 - langVal / 100);
       if (badgeLang) {
         const li = TRIBE.interpretScore(langVal);
         badgeLang.innerHTML = `<span class="badge badge-focused" style="background:${li.color}20;color:${li.color};border-color:${li.color}40;">${li.label}</span>`;
       }
 
       // Visual ring
-      const visEl    = document.getElementById('val-vis');
-      const visRing  = document.getElementById('ring-vis');
+      const visEl = document.getElementById('val-vis');
+      const visRing = document.getElementById('ring-vis');
       const badgeVis = document.getElementById('badge-vis');
-      if (visEl)    visEl.textContent = visVal;
-      if (visRing)  visRing.style.strokeDashoffset = circ * (1 - visVal / 100);
+      if (visEl) visEl.textContent = visVal;
+      if (visRing) visRing.style.strokeDashoffset = circ * (1 - visVal / 100);
       if (badgeVis) {
         const vi = TRIBE.interpretScore(visVal);
         badgeVis.innerHTML = `<span class="badge badge-focused" style="background:${vi.color}20;color:${vi.color};border-color:${vi.color}40;">${vi.label}</span>`;
       }
 
       // Session params
-      const pDur    = document.getElementById('p-dur');
+      const pDur = document.getElementById('p-dur');
       const pThresh = document.getElementById('p-thresh');
-      const pDom    = document.getElementById('p-dom');
-      if (pDur)    pDur.textContent    = safe(data.recommended_duration, 25) + ' min';
+      const pDom = document.getElementById('p-dom');
+      if (pDur) pDur.textContent = safe(data.recommended_duration, 25) + ' min';
       if (pThresh) pThresh.textContent = (76 - (execVal / 100) * 18).toFixed(0) + '%';
-      if (pDom)    pDom.textContent    = safe(data.dominant_region, 'Executive');
+      if (pDom) pDom.textContent = safe(data.dominant_region, 'Executive');
       // NOTE: DO NOT call TRIBE.updateFromFirebase here — causes infinite loop.
       // It is called from the polling handler (after complete) and TRIBE.subscribe guard only.
     }
