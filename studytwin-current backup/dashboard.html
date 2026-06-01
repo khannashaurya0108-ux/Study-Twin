@@ -897,6 +897,7 @@
       font-weight: 900 !important;
       letter-spacing: -0.04em !important;
       background: linear-gradient(135deg, #0E1B2E 0%, #1A4FD6 100%);
+      background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       text-shadow: 0 10px 20px rgba(26, 79, 214, 0.15);
@@ -909,33 +910,10 @@
 </head>
 
 <body data-page="dashboard">
-  <div id="auth-overlay"
-    style="position:fixed;inset:0;background:#050D1F;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:99999;">
-    <div style="font-family:'Inter',sans-serif;text-align:center;">
-      <div style="font-size:32px;font-weight:900;color:white;margin-bottom:8px;">Study<span
-          style="color:#2563EB;">Twin</span></div>
-      <div style="font-size:14px;color:#6B7280;margin-bottom:40px;">Sign in to start your session</div>
-      <button id="google-signin-btn"
-        style="background:#2563EB;color:white;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;">Sign
-        in with Google</button>
-      <div id="auth-error" style="color:#EF4444;font-size:13px;margin-top:16px;display:none;"></div>
-    </div>
-  </div>
+  <!-- auth.js handles authentication and redirects to login.html if not signed in -->
+  <script src="auth.js?v=1780188626345"></script>
+  <script src="aura.js"></script>
 
-  <script>
-    window.addEventListener('load', function () {
-      var btn = document.getElementById('google-signin-btn');
-      if (btn) {
-        btn.addEventListener('click', function () {
-          var provider = new window.firebase.auth.GoogleAuthProvider();
-          window.firebase.auth().signInWithPopup(provider).catch(function (err) {
-            var errEl = document.getElementById('auth-error');
-            if (errEl) { errEl.textContent = 'Sign-in failed: ' + err.message; errEl.style.display = 'block'; }
-          });
-        });
-      }
-    });
-  </script>
   <canvas id="fluid-canvas"
     style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
   <div id="_nav"></div>
@@ -989,7 +967,10 @@
             </div>
           </div>
         </div>
-        <div class="session-timer" id="d-timer">00:00</div>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <button id="pomodoro-btn" class="btn-ghost" style="padding: 6px 14px; font-size: 13px; border-radius: 8px;">Start Session</button>
+          <div class="session-timer" id="d-timer" style="min-width: 110px; text-align: right;">25:00</div>
+        </div>
       </div>
 
       <!-- TRIBE CONTEXT BAR -->
@@ -1618,7 +1599,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <!-- This order is mandatory -->
   <script src="blink-detection.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=1780188626345"></script>
   <script>
     // ── SERVER URL ──────────────────────────────────────────────
     // LOCAL DEV: 'http://localhost:3001'
@@ -2044,6 +2025,54 @@
     });
   </script>
 
+  <!-- Pomodoro Timer Logic -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const pomodoroBtn = document.getElementById('pomodoro-btn');
+      const timerDisplay = document.getElementById('d-timer');
+      
+      let timerInterval = null;
+      let timeLeft = 25 * 60; // 25 minutes
+      let isRunning = false;
+      
+      function updateDisplay() {
+        const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+        const seconds = (timeLeft % 60).toString().padStart(2, '0');
+        if (timerDisplay) timerDisplay.textContent = `${minutes}:${seconds}`;
+      }
+      
+      if (pomodoroBtn && timerDisplay) {
+        // Initial display update
+        updateDisplay();
+        
+        pomodoroBtn.addEventListener('click', () => {
+          if (isRunning) {
+            // Stop timer
+            clearInterval(timerInterval);
+            isRunning = false;
+            pomodoroBtn.textContent = 'Resume Session';
+          } else {
+            // Start timer
+            isRunning = true;
+            pomodoroBtn.textContent = 'Pause Session';
+            
+            timerInterval = setInterval(() => {
+              if (timeLeft > 0) {
+                timeLeft--;
+                updateDisplay();
+              } else {
+                clearInterval(timerInterval);
+                isRunning = false;
+                pomodoroBtn.textContent = 'Start Session';
+                timeLeft = 25 * 60; // reset
+                updateDisplay();
+              }
+            }, 1000);
+          }
+        });
+      }
+    });
+  </script>
 </body>
 
 </html>

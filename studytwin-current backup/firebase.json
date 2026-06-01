@@ -1,6 +1,17 @@
 {
   "hosting": {
-    "public": "dist",
+    "public": ".",
+    "headers": [
+      {
+        "source": "**/*.@(html|js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ],
     "ignore": [
       "firebase.json",
       ".firebaserc",
@@ -10,6 +21,7 @@
       "**/venv_blink/**",
       "**/env/**",
       "**/server/**",
+      "**/dist/**",
       "**/*.exe",
       "**/*.bin",
       "**/*.sh",

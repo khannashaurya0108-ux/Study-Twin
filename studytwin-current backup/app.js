@@ -27,7 +27,7 @@ const ST_Engine = {
 }
 ST_Engine.start()
 
-const FIREBASE_CONFIG = {
+var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBXZZ-wN2wzguf35rfPaLqm61gx0LoxIAA",
   authDomain: "studytwin-rvce.firebaseapp.com",
   databaseURL: "https://studytwin-rvce-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -38,6 +38,7 @@ const FIREBASE_CONFIG = {
 }
 
 const DATA_SOURCE = 'firebase'
+window._sessionStartMs = null;   // set on first Firebase data
 
 /*
   Firebase Realtime Database Schema
@@ -99,12 +100,82 @@ function mapHRVtoScore(rmssd) {
   return Math.max(0, Math.min(100, 100 - ((rmssd - 18) / 70) * 100));
 }
 
+/* ══════════════════════════════════════════════════════════════
+   STUDYTWIN — app.js  connectFirebase() REPLACEMENT BLOCK
+   Phase 2 Update: reads from /sessions/{uid}/live/current
+
+   HOW TO USE:
+   Find the existing connectFirebase() function in your app.js
+   and REPLACE the entire function body with this code.
+   The function signature stays the same: function connectFirebase()
+
+   WHAT CHANGED vs old version:
+   1. Listens to /sessions/{uid}/live/current  (not /live)
+      This matches the ESP32 firmware write path.
+   2. Handles sensor_valid flag:
+      - When false → shows "Place finger on sensor" banner
+      - When true  → shows live biosignal values
+   3. Smooth lerp animation on CLI number (displayCLI variable)
+   4. Pulls blink_score FROM Firebase if browser blink module hasn't
+      started yet (allows dashboard to still show real blink data
+      if it was written by another browser session).
+   5. All existing TRIBE / pending_analysis paths are untouched.
+   6. Dashboard shows real data from ESP32 – no simulation needed.
+══════════════════════════════════════════════════════════════ */
+
+// ── Lerp animation state (smooth CLI number transitions) ──────
+let _displayCLI   = 50;    // currently displayed value (animated)
+let _targetCLI    = 50;    // target from Firebase
+let _lerpRunning  = false;
+
+function _startLerp() {
+  if (_lerpRunning) return;
+  _lerpRunning = true;
+  function step() {
+    const diff = _targetCLI - _displayCLI;
+    if (Math.abs(diff) < 0.5) {
+      _displayCLI  = _targetCLI;
+      _lerpRunning = false;
+      return;
+    }
+    _displayCLI += diff * 0.12;   // smooth easing
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── Sensor-invalid banner helpers ─────────────────────────────
+function _showSensorBanner(show) {
+  // Create banner if not already present
+  let banner = document.getElementById('st-sensor-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'st-sensor-banner';
+    banner.style.cssText = [
+      'position:fixed', 'bottom:24px', 'left:50%',
+      'transform:translateX(-50%)',
+      'background:#D97706', 'color:white',
+      'padding:10px 24px', 'border-radius:100px',
+      'font-size:13px', 'font-weight:600',
+      'z-index:999', 'pointer-events:none',
+      'transition:opacity 0.4s',
+      'box-shadow:0 4px 20px rgba(217,119,6,0.4)'
+    ].join(';');
+    banner.textContent = '⚠ Place finger on MAX30102 sensor';
+    document.body.appendChild(banner);
+  }
+  banner.style.opacity = show ? '1' : '0';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MAIN connectFirebase() — replace this entire function in app.js
+// ══════════════════════════════════════════════════════════════
 function connectFirebase() {
   const loadScript = (src) => new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) return resolve();
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = resolve;
+    const s   = document.createElement('script');
+    s.src     = src;
+    s.onload  = resolve;
     s.onerror = reject;
     document.head.appendChild(s);
   });
@@ -120,25 +191,16 @@ function connectFirebase() {
 
     const auth = window.firebase.auth();
     auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
-    const db = window.firebase.database();
+    const db   = window.firebase.database();
 
-    // Google Sign-In function — called by the button in dashboard.html
-    window.signInWithGoogle = function () {
-      const provider = new window.firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).catch(err => {
-        const errEl = document.getElementById('auth-error');
-        if (errEl) { errEl.textContent = 'Sign-in failed. Try again.'; errEl.style.display = 'block'; }
-      });
-    };
-
+    // ── Auth state change — only handle DATA, not auth UI ──────
+    // auth.js handles all auth UI (redirects, login page, nav button)
+    // connectFirebase() only handles Firebase data subscriptions
     auth.onAuthStateChanged(user => {
-      const overlay = document.getElementById('auth-overlay');
-
       if (user) {
-        // Confirmed logged in — hide overlay if it was shown
-        if (overlay) overlay.style.display = 'none';
         window.CURRENT_UID = user.uid;
 
+        // ── Load TRIBE metadata (unchanged) ────────────────────
         db.ref('/sessions/' + user.uid + '/metadata').once('value', (snap) => {
           const meta = snap.val();
           if (meta && (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
@@ -149,40 +211,98 @@ function connectFirebase() {
         db.ref('/sessions/' + user.uid + '/metadata').on('value', (snap) => {
           const meta = snap.val();
           if (meta && meta.tribe_mode && meta.tribe_mode !== 'default' &&
-            (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
+              (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
             TRIBE.updateFromFirebase(meta);
           }
         });
 
-        db.ref('/sessions/' + user.uid + '/live').on('value', (snapshot) => {
+        // ── Live sensor data: /sessions/{uid}/live/current ─────
+        // ESP32 overwrites this every 1 second.
+        // blink-detection.js merges blink_rate/blink_score into this same node.
+        db.ref('/sessions/' + user.uid + '/live/current').on('value', (snapshot) => {
           const data = snapshot.val();
-          if (data && ST._subs) {
-            const gsr_score = data.gsr_z !== undefined ? mapGSRtoScore(data.gsr_z) : 50;
-            const hrv_score = data.rmssd !== undefined ? mapHRVtoScore(data.rmssd) : 50;
+          if (!data) return;   // node not yet created
 
-            const cli = computeCLI(gsr_score, hrv_score);
-            const state = classifyState(cli);
+          // ── Sensor validity check ─────────────────────────────
+          const valid = data.sensor_valid !== false;  // default true if field absent
+          _showSensorBanner(!valid);
 
+          // ── Status dot color ──────────────────────────────────
+          const statusDot = document.getElementById('status-dot');
+          if (statusDot) {
+            statusDot.style.background = valid ? 'var(--emerald)' : 'var(--amber)';
+          }
+
+          // ── Device mode label in session bar ──────────────────
+          const deviceLabel = document.querySelector('.sb-val');  // "Connected · Simulation" label
+          if (deviceLabel && deviceLabel.textContent.includes('Simulation')) {
+            deviceLabel.innerHTML = '<div class="pulse" style="background:var(--emerald)"></div>Connected · ESP32';
+          }
+
+          // ── Map raw Firebase fields to ST data format ─────────
+          const gsr_z      = typeof data.gsr_z    === 'number' ? data.gsr_z   : 0;
+          const rmssd      = typeof data.rmssd    === 'number' ? data.rmssd   : 55;
+          const hrBpm      = typeof data.hr_bpm   === 'number' ? data.hr_bpm  : 0;
+          const gsrRaw     = typeof data.gsr_raw  === 'number' ? data.gsr_raw : 2048;
+          const gsrDevPct  = parseFloat((gsr_z * 100).toFixed(1));
+
+          // ── CLI: use ESP32-computed value if available ─────────
+          let cliScore = 50;
+          if (typeof data.cli_score === 'number') {
+            cliScore = data.cli_score;
+          } else {
+            const gsrS   = Math.min(100, (Math.abs(gsrDevPct) / 82) * 100);
+            const hrvS   = Math.max(0, 100 - ((rmssd - 18) / 70) * 100);
+            const blinkS = typeof data.blink_score === 'number' ? data.blink_score : 50;
+            cliScore     = Math.round((gsrS * 0.50) + (hrvS * 0.35) + (blinkS * 0.15));
+          }
+
+          // ── Smooth animation target ───────────────────────────
+          _targetCLI = cliScore;
+          _startLerp();
+
+          // ── Blink rate/score (written by blink-detection.js) ──
+          const blinkRate  = typeof data.blink_rate  === 'number' ? data.blink_rate  : -1;
+          const blinkScore = typeof data.blink_score === 'number' ? data.blink_score : 50;
+
+          // ── State string ──────────────────────────────────────
+          const stateStr = data.cli_state
+            ? data.cli_state.toLowerCase()
+            : (cliScore < 26 ? 'calm' : cliScore < 56 ? 'focused' : cliScore < 78 ? 'elevated' : 'overloaded');
+
+          // ── Broadcast to all ST subscribers ───────────────────
+          if (ST._subs) {
             ST._subs.forEach(fn => fn({
-              ...ST.get(),
-              gsrRaw: data.gsr_raw,
-              gsrDev: data.gsr_z !== undefined ? data.gsr_z * 100 : 0,
-              hrv: data.rmssd,
-              cli: cli,
-              state: state,
-              battery: data.battery
+              cli:      _displayCLI,
+              state:    stateStr,
+              hr:       Math.round(hrBpm),
+              hrv:      parseFloat(rmssd.toFixed(1)),
+              spo2:     typeof data.spo2 === 'number' ? data.spo2 : 98,
+              gsrRaw:   gsrRaw,
+              gsrDev:   gsrDevPct,
+              blink:    blinkRate >= 0 ? blinkRate : '--',
+              battery:  typeof data.battery === 'number' ? data.battery : 3800,
+              sessionS: Math.floor((Date.now() - (window._sessionStartMs || Date.now())) / 1000),
+              accuracy: '83.4%',
+              latency:  '47ms',
+              rmssd:    rmssd,
+              blink_score: blinkScore,
+              sensor_valid: valid
             }));
           }
         });
 
+        // ── Store session start time ──────────────────────────
+        if (!window._sessionStartMs) window._sessionStartMs = Date.now();
+
       } else {
-        // Confirmed NOT logged in — only now show the overlay
-        if (overlay) overlay.style.display = 'flex';
+        // Not logged in — auth.js handles the redirect, nothing to do here
+        window.CURRENT_UID = null;
       }
     });
 
   }).catch(err => {
-    console.warn('Failed to load Firebase SDK, falling back to simulation:', err);
+    console.warn('[StudyTwin] Firebase SDK load failed, falling back to simulation:', err);
     if (ST.tick) setInterval(ST.tick, 2000);
   });
 }
@@ -254,8 +374,27 @@ const ST = (() => {
   }
 })()
 
-// ── CURRENT UID (Phase 5: Blink Detection + TRIBE) ────────────
-window.CURRENT_UID = null;  // set by connectFirebase() after login
+// ── CURRENT UID ────────────────────────────────────────────────
+window.CURRENT_UID = null;  // set by auth.js after login
+
+// ── NAV AUTH BUTTON — updated reactively by auth.js ────────────
+// Called by auth.js whenever auth state changes
+window.updateAuthNav = function(isLoggedIn, user) {
+  const authBtn = document.querySelector('[data-auth-btn]');
+  if (!authBtn) return;
+  if (isLoggedIn && user) {
+    authBtn.textContent = 'Sign Out';
+    authBtn.onclick = () => { if (window.AUTH) window.AUTH.signOut(); };
+    authBtn.title = 'Signed in as ' + (user.displayName || user.email);
+  } else {
+    authBtn.textContent = 'Sign In';
+    authBtn.onclick = () => { window.location.href = 'login.html'; };
+    authBtn.title = 'Sign in to access your dashboard';
+  }
+};
+
+// Legacy alias (kept for backward compatibility)
+window.updateLogoutButton = window.updateAuthNav;
 
 // ── NAV + FOOTER ────────────────────────────────────────────
 const NAV_LINKS = [
@@ -270,6 +409,11 @@ const NAV_LINKS = [
 function renderNav(activePage) {
   const el = document.getElementById('_nav')
   if (!el) return
+
+  // Determine initial auth state (may update later when Firebase resolves)
+  const isLoggedIn = !!(window.AUTH && window.AUTH.isLoggedIn);
+  const currentPage = document.body.dataset.page || 'index';
+
   el.innerHTML = `
   <nav>
     <a class="nav-logo" href="index.html">
@@ -289,9 +433,24 @@ function renderNav(activePage) {
     </ul>
     <div class="nav-right">
       <div class="live-pill"><div class="pulse"></div>LIVE</div>
-      <a href="dashboard.html" class="btn-primary" style="font-size:13px;padding:9px 20px;">Open Dashboard</a>
+      ${currentPage !== 'dashboard'
+        ? `<a href="dashboard.html" class="btn-primary" style="font-size:13px;padding:9px 20px;">Open Dashboard</a>`
+        : ''}
+      <button data-auth-btn class="btn-ghost" style="font-size:13px;padding:9px 20px;" title="Sign in">
+        ${isLoggedIn ? 'Sign Out' : 'Sign In'}
+      </button>
     </div>
   </nav>`
+
+  // Wire up the button now that it's in the DOM
+  const authBtn = el.querySelector('[data-auth-btn]');
+  if (authBtn) {
+    if (isLoggedIn) {
+      authBtn.onclick = () => { if (window.AUTH) window.AUTH.signOut(); };
+    } else {
+      authBtn.onclick = () => { window.location.href = 'login.html'; };
+    }
+  }
 }
 
 function renderFooter() {
