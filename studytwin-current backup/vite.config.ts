@@ -43,10 +43,25 @@ function copyStaticAssets() {
   };
 }
 
+// Plugin to append a cache-busting query parameter to local assets in HTML
+function cacheBust() {
+  const version = Date.now().toString();
+  return {
+    name: 'cache-bust',
+    enforce: 'post',
+    transformIndexHtml(html: string) {
+      return html.replace(/(src|href)="([^"]+\.(?:js|css))"/g, (match, attr, url) => {
+        if (url.startsWith('http') || url.startsWith('//')) return match;
+        return `${attr}="${url}?v=${version}"`;
+      });
+    }
+  };
+}
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    plugins: [react(), tailwindcss(), copyStaticAssets()],
+    plugins: [react(), tailwindcss(), copyStaticAssets(), cacheBust()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
