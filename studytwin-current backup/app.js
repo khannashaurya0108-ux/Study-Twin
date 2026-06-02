@@ -11,7 +11,7 @@
 
 
 
-// your Render URL
+ // your Render URL
 // For local testing use: 'http://localhost:3001' 
 
 const ST_Engine = {
@@ -149,7 +149,7 @@ function connectFirebase() {
         db.ref('/sessions/' + user.uid + '/metadata').on('value', (snap) => {
           const meta = snap.val();
           if (meta && meta.tribe_mode && meta.tribe_mode !== 'default' &&
-            (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
+              (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
             TRIBE.updateFromFirebase(meta);
           }
         });
@@ -213,8 +213,8 @@ const ST = (() => {
     const blS = bl < 10 ? 82 : Math.max(0, 100 - (bl / 24) * 62)
     // Also use real blink rate if available
     const blinkRateReal = (typeof window.BLINK_RATE === 'number')
-      ? window.BLINK_RATE
-      : Math.round(bl * 10) / 10;
+                        ? window.BLINK_RATE
+                        : Math.round(bl * 10) / 10;
 
     const cli = computeCLI(gsrS, hrvS);
     _d = {
@@ -702,51 +702,51 @@ window.renderNav = renderNav;
 window.renderFooter = renderFooter;
 window.initScrollReveal = initScrollReveal;
 
-window.initLoadChart = function () {
+window.initLoadChart = function() {
   const canvas = document.getElementById('loadChart');
   if (!canvas) return null;
   const ctx = canvas.getContext('2d');
-
+  
   if (window.Chart) {
     Chart.defaults.color = '#9CA3AF';
     Chart.defaults.font.family = "'Inter',sans-serif";
     Chart.defaults.font.size = 11;
   }
-
+  
   const g = ctx.createLinearGradient(0, 0, 0, 148);
-  g.addColorStop(0, 'rgba(37,99,235,0.18)');
+  g.addColorStop(0, 'rgba(37,99,235,0.18)'); 
   g.addColorStop(1, 'rgba(37,99,235,0)');
-
+  
   // 'zero' dataset initialized
   const zeroData = Array(90).fill(0);
-
+  
   return new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: Array(90).fill(''),
-      datasets: [{
-        data: zeroData,
-        borderColor: '#2563EB',
-        borderWidth: 2,
-        backgroundColor: g,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 0,
-        spanGaps: false
-      }]
+    data: { 
+      labels: Array(90).fill(''), 
+      datasets: [{ 
+        data: zeroData, 
+        borderColor: '#2563EB', 
+        borderWidth: 2, 
+        backgroundColor: g, 
+        fill: true, 
+        tension: 0.4, 
+        pointRadius: 0, 
+        spanGaps: false 
+      }] 
     },
-    options: {
-      responsive: true,
+    options: { 
+      responsive: true, 
       maintainAspectRatio: false,
-      animation: false,
-      scales: {
-        y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { stepSize: 25 } },
-        x: { display: false }
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: { enabled: false }
-      }
+      animation: false, 
+      scales: { 
+        y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { stepSize: 25 } }, 
+        x: { display: false } 
+      }, 
+      plugins: { 
+        legend: { display: false }, 
+        tooltip: { enabled: false } 
+      } 
     }
   });
 };
