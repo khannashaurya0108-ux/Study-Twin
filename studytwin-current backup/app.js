@@ -168,9 +168,11 @@ function _showSensorBanner(show) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  MAIN connectFirebase() — replace this entire function in app.js
+//  MAIN connectFirebase() — Enhanced with ESP32 status, debug logging,
+//  permission error handling, and 15s no-data warning.
 // ══════════════════════════════════════════════════════════════
 function connectFirebase() {
+
   const loadScript = (src) => new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) return resolve();
     const s   = document.createElement('script');
@@ -185,6 +187,13 @@ function connectFirebase() {
     loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js'),
     loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js')
   ]).then(() => {
+
+    if (!window.firebase) {
+      console.error('[Firebase] SDK did not load — running simulation mode');
+      if (typeof ST !== 'undefined' && ST.tick) setInterval(ST.tick, 2000);
+      return;
+    }
+
     if (!window.firebase.apps.length) {
       window.firebase.initializeApp(FIREBASE_CONFIG);
     }
@@ -193,117 +202,226 @@ function connectFirebase() {
     auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
     const db   = window.firebase.database();
 
-    // ── Auth state change — only handle DATA, not auth UI ──────
-    // auth.js handles all auth UI (redirects, login page, nav button)
-    // connectFirebase() only handles Firebase data subscriptions
+    // ── Helper: update the Firebase status label in the dashboard ─
+    function setFbStatus(msg, color) {
+      const el = document.getElementById('fb-connection-status');
+      if (el) {
+        el.textContent = msg;
+        el.style.color = color || 'var(--ink3)';
+      }
+    }
+
+    // ── Helper: inject a status box into the dashboard session bar ─
+    // (Only adds it once; harmless on other pages)
+    function ensureStatusBox() {
+      if (document.getElementById('fb-connection-status')) return;
+      const sbLeft = document.querySelector('.sb-left');
+      if (!sbLeft) return;
+
+      const sep  = document.createElement('div');
+      sep.className = 'sb-sep';
+
+      const box  = document.createElement('div');
+      box.innerHTML = `
+        <div class="sb-label">Firebase Status</div>
+        <div id="fb-connection-status" style="font-size:12px;font-weight:600;color:var(--ink4);">
+          Connecting…
+        </div>
+      `;
+      sbLeft.appendChild(sep);
+      sbLeft.appendChild(box);
+    }
+    ensureStatusBox();
+
+    // ── Auth state listener ────────────────────────────────────────
     auth.onAuthStateChanged(user => {
+
       if (user) {
         window.CURRENT_UID = user.uid;
 
-        // ── Load TRIBE metadata (unchanged) ────────────────────
-        db.ref('/sessions/' + user.uid + '/metadata').once('value', (snap) => {
+        const LIVE_PATH = '/sessions/' + user.uid + '/live/current';
+
+        // Log everything the student needs to debug
+        console.group('%c[Firebase] 📡 SUBSCRIBED TO LIVE DATA', 'color:#3b82f6;font-weight:bold;font-size:13px');
+        console.log('Signed-in UID :', user.uid);
+        console.log('Firebase path :', LIVE_PATH);
+        console.log('%c↑ The ESP32 config portal must have EXACTLY this UID', 'color:#f59e0b;font-weight:bold');
+        console.groupEnd();
+
+        setFbStatus('Waiting for ESP32…', '#D97706');
+
+        // ── TRIBE metadata (unchanged from original) ──────────────
+        db.ref('/sessions/' + user.uid + '/metadata').once('value', snap => {
           const meta = snap.val();
           if (meta && (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
-            TRIBE.updateFromFirebase(meta);
+            if (typeof TRIBE !== 'undefined') TRIBE.updateFromFirebase(meta);
           }
         });
 
-        db.ref('/sessions/' + user.uid + '/metadata').on('value', (snap) => {
+        db.ref('/sessions/' + user.uid + '/metadata').on('value', snap => {
           const meta = snap.val();
           if (meta && meta.tribe_mode && meta.tribe_mode !== 'default' &&
               (meta.cds_executive > 0 || meta.cds_language > 0 || meta.cds_visual > 0)) {
-            TRIBE.updateFromFirebase(meta);
+            if (typeof TRIBE !== 'undefined') TRIBE.updateFromFirebase(meta);
           }
         });
 
-        // ── Live sensor data: /sessions/{uid}/live/current ─────
-        // ESP32 overwrites this every 1 second.
-        // blink-detection.js merges blink_rate/blink_score into this same node.
-        db.ref('/sessions/' + user.uid + '/live/current').on('value', (snapshot) => {
-          const data = snapshot.val();
-          if (!data) return;   // node not yet created
-
-          // ── Sensor validity check ─────────────────────────────
-          const valid = data.sensor_valid !== false;  // default true if field absent
-          _showSensorBanner(!valid);
-
-          // ── Status dot color ──────────────────────────────────
-          const statusDot = document.getElementById('status-dot');
-          if (statusDot) {
-            statusDot.style.background = valid ? 'var(--emerald)' : 'var(--amber)';
+        // ── Set a timer: warn if no data received after 15 seconds ─
+        const noDataTimer = setTimeout(() => {
+          if (!window._sessionStartMs) {
+            console.warn('[Firebase] ⚠ No data received for 15 seconds.');
+            console.warn('[Firebase] Possible causes:');
+            console.warn('  1. ESP32 is off or not connected to WiFi');
+            console.warn('  2. ESP32 config portal UID does not match your signed-in UID: ' + user.uid);
+            console.warn('  3. Firebase security rules are blocking reads');
+            console.warn('  → Open Firebase Console → Realtime Database and check path:');
+            console.warn('     ' + LIVE_PATH);
+            setFbStatus('⚠ No ESP32 data — check console', '#DC2626');
           }
+        }, 15000);
 
-          // ── Device mode label in session bar ──────────────────
-          const deviceLabel = document.querySelector('.sb-val');  // "Connected · Simulation" label
-          if (deviceLabel && deviceLabel.textContent.includes('Simulation')) {
-            deviceLabel.innerHTML = '<div class="pulse" style="background:var(--emerald)"></div>Connected · ESP32';
+        // ── Main live data listener ────────────────────────────────
+        db.ref(LIVE_PATH).on(
+          'value',
+          (snapshot) => {
+            const data = snapshot.val();
+
+            // ── Node is empty — ESP32 hasn't written yet ───────────
+            if (!data) {
+              console.log('[Firebase] Path exists but data is null. Waiting for ESP32 to write…');
+              setFbStatus('⏳ Waiting for ESP32 data…', '#D97706');
+              return;
+            }
+
+            // ── First real data received! ──────────────────────────
+            if (!window._sessionStartMs) {
+              window._sessionStartMs = Date.now();
+              clearTimeout(noDataTimer);
+
+              console.group('%c[Firebase] ✅ REAL ESP32 DATA RECEIVED!', 'color:#22c55e;font-weight:bold;font-size:14px');
+              console.log('Data snapshot:', data);
+              console.log('sensor_valid:', data.sensor_valid);
+              console.log('cli_score:',   data.cli_score);
+              console.log('hr_bpm:',      data.hr_bpm);
+              console.log('gsr_raw:',     data.gsr_raw);
+              console.log('rmssd:',       data.rmssd);
+              console.groupEnd();
+
+              setFbStatus('✅ ESP32 Connected · Live', '#059669');
+
+              // Update "Connected · Simulation" label → "Connected · ESP32"
+              document.querySelectorAll('.sb-val').forEach(el => {
+                if (el.textContent && el.textContent.includes('Simulation')) {
+                  el.innerHTML = '<div class="pulse" style="background:var(--emerald)"></div>Connected · ESP32';
+                }
+              });
+
+              // Hide fallback placeholders
+              const cFb = document.getElementById('chart-fallback');
+              if (cFb) cFb.style.display = 'none';
+              const bFb = document.getElementById('brain-fallback');
+              if (bFb) bFb.style.display = 'none';
+            }
+
+            // ── Sensor validity ────────────────────────────────────
+            const valid = data.sensor_valid !== false;
+            _showSensorBanner(!valid);
+
+            const statusDot = document.getElementById('status-dot');
+            if (statusDot) {
+              statusDot.style.background = valid ? 'var(--emerald)' : 'var(--amber)';
+            }
+
+            if (!valid) {
+              setFbStatus('⚠ ESP32 connected — place finger on sensor', '#D97706');
+            } else {
+              setFbStatus('✅ ESP32 Connected · Live', '#059669');
+            }
+
+            // ── Map Firebase fields to dashboard format ────────────
+            const gsr_z     = typeof data.gsr_z    === 'number' ? data.gsr_z   : 0;
+            const rmssd     = typeof data.rmssd    === 'number' ? data.rmssd   : 55;
+            const hrBpm     = typeof data.hr_bpm   === 'number' ? data.hr_bpm  : 0;
+            const gsrRaw    = typeof data.gsr_raw  === 'number' ? data.gsr_raw : 2048;
+            const gsrDevPct = parseFloat((gsr_z * 100).toFixed(1));
+
+            // CLI: prefer ESP32-computed value, otherwise fuse locally
+            let cliScore = 50;
+            if (typeof data.cli_score === 'number') {
+              cliScore = Math.max(0, Math.min(100, data.cli_score));
+            } else {
+              const gsrS   = Math.min(100, (Math.abs(gsrDevPct) / 82) * 100);
+              const hrvS   = Math.max(0, 100 - ((rmssd - 18) / 70) * 100);
+              const blinkS = typeof data.blink_score === 'number' ? data.blink_score : 50;
+              cliScore     = Math.round((gsrS * 0.50) + (hrvS * 0.35) + (blinkS * 0.15));
+            }
+
+            _targetCLI = cliScore;
+            _startLerp();
+
+            const blinkRate  = typeof data.blink_rate  === 'number' ? data.blink_rate  : -1;
+            const blinkScore = typeof data.blink_score === 'number' ? data.blink_score : 50;
+
+            const stateStr = data.cli_state
+              ? data.cli_state.toLowerCase()
+              : (cliScore < 26 ? 'calm' : cliScore < 56 ? 'focused' : cliScore < 78 ? 'elevated' : 'overloaded');
+
+            // ── Push to all dashboard subscribers ─────────────────
+            if (typeof ST !== 'undefined' && ST._subs) {
+              ST._subs.forEach(fn => fn({
+                cli:          Math.round(_displayCLI),
+                state:        stateStr,
+                hr:           Math.round(hrBpm),
+                hrv:          parseFloat(rmssd.toFixed(1)),
+                spo2:         typeof data.spo2    === 'number' ? data.spo2    : 98,
+                gsrRaw:       gsrRaw,
+                gsrDev:       gsrDevPct,
+                blink:        blinkRate >= 0 ? parseFloat(blinkRate.toFixed(1)) : '--',
+                battery:      typeof data.battery === 'number' ? data.battery : 3800,
+                sessionS:     Math.floor((Date.now() - (window._sessionStartMs || Date.now())) / 1000),
+                accuracy:     '83.4%',
+                latency:      '47ms',
+                rmssd:        rmssd,
+                blink_score:  blinkScore,
+                sensor_valid: valid
+              }));
+            }
+          },
+
+          // ── Firebase permission / error callback ─────────────────
+          (error) => {
+            clearTimeout(noDataTimer);
+            console.group('%c[Firebase] ❌ PERMISSION DENIED or ERROR', 'color:#ef4444;font-weight:bold;font-size:13px');
+            console.error('Error code:',    error.code);
+            console.error('Error message:', error.message);
+            console.log('%cMost likely cause: Your signed-in UID does not match the UID in the ESP32 config portal', 'color:#f59e0b;font-weight:bold');
+            console.log('Your signed-in UID:', user.uid);
+            console.log('Check Firebase Console → Realtime Database for the path:', LIVE_PATH);
+            console.groupEnd();
+
+            setFbStatus('❌ Permission denied — check console', '#DC2626');
+
+            // Fall back to simulation so the dashboard still shows something
+            if (typeof ST !== 'undefined' && ST.tick) {
+              console.log('[Firebase] Falling back to simulation mode');
+              setInterval(ST.tick, 2000);
+            }
           }
+        );
 
-          // ── Map raw Firebase fields to ST data format ─────────
-          const gsr_z      = typeof data.gsr_z    === 'number' ? data.gsr_z   : 0;
-          const rmssd      = typeof data.rmssd    === 'number' ? data.rmssd   : 55;
-          const hrBpm      = typeof data.hr_bpm   === 'number' ? data.hr_bpm  : 0;
-          const gsrRaw     = typeof data.gsr_raw  === 'number' ? data.gsr_raw : 2048;
-          const gsrDevPct  = parseFloat((gsr_z * 100).toFixed(1));
-
-          // ── CLI: use ESP32-computed value if available ─────────
-          let cliScore = 50;
-          if (typeof data.cli_score === 'number') {
-            cliScore = data.cli_score;
-          } else {
-            const gsrS   = Math.min(100, (Math.abs(gsrDevPct) / 82) * 100);
-            const hrvS   = Math.max(0, 100 - ((rmssd - 18) / 70) * 100);
-            const blinkS = typeof data.blink_score === 'number' ? data.blink_score : 50;
-            cliScore     = Math.round((gsrS * 0.50) + (hrvS * 0.35) + (blinkS * 0.15));
-          }
-
-          // ── Smooth animation target ───────────────────────────
-          _targetCLI = cliScore;
-          _startLerp();
-
-          // ── Blink rate/score (written by blink-detection.js) ──
-          const blinkRate  = typeof data.blink_rate  === 'number' ? data.blink_rate  : -1;
-          const blinkScore = typeof data.blink_score === 'number' ? data.blink_score : 50;
-
-          // ── State string ──────────────────────────────────────
-          const stateStr = data.cli_state
-            ? data.cli_state.toLowerCase()
-            : (cliScore < 26 ? 'calm' : cliScore < 56 ? 'focused' : cliScore < 78 ? 'elevated' : 'overloaded');
-
-          // ── Broadcast to all ST subscribers ───────────────────
-          if (ST._subs) {
-            ST._subs.forEach(fn => fn({
-              cli:      _displayCLI,
-              state:    stateStr,
-              hr:       Math.round(hrBpm),
-              hrv:      parseFloat(rmssd.toFixed(1)),
-              spo2:     typeof data.spo2 === 'number' ? data.spo2 : 98,
-              gsrRaw:   gsrRaw,
-              gsrDev:   gsrDevPct,
-              blink:    blinkRate >= 0 ? blinkRate : '--',
-              battery:  typeof data.battery === 'number' ? data.battery : 3800,
-              sessionS: Math.floor((Date.now() - (window._sessionStartMs || Date.now())) / 1000),
-              accuracy: '83.4%',
-              latency:  '47ms',
-              rmssd:    rmssd,
-              blink_score: blinkScore,
-              sensor_valid: valid
-            }));
-          }
-        });
-
-        // ── Store session start time ──────────────────────────
-        if (!window._sessionStartMs) window._sessionStartMs = Date.now();
+        if (!window._sessionStartMs) window._sessionStartMs = null; // reset
 
       } else {
-        // Not logged in — auth.js handles the redirect, nothing to do here
+        // User is not signed in — data stream stops
         window.CURRENT_UID = null;
+        setFbStatus('Not signed in', '#EF4444');
+        console.log('[Firebase] No user signed in — data stream inactive. Sign in to see ESP32 data.');
       }
     });
 
   }).catch(err => {
-    console.warn('[StudyTwin] Firebase SDK load failed, falling back to simulation:', err);
-    if (ST.tick) setInterval(ST.tick, 2000);
+    console.warn('[Firebase] SDK failed to load, falling back to simulation:', err);
+    if (typeof ST !== 'undefined' && ST.tick) setInterval(ST.tick, 2000);
   });
 }
 
