@@ -473,6 +473,38 @@
       line-height: 1.7;
     }
 
+    /* ── INSIGHTS LOADING / UPDATED STATE ── */
+    @keyframes insightPulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+    .insights-loading .insight-text {
+      animation: insightPulse 1.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    #insights-status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--cobalt);
+      display: inline-block;
+      margin-right: 5px;
+      flex-shrink: 0;
+    }
+    #insights-status-dot.loading {
+      background: var(--amber);
+      animation: insightPulse 0.8s ease-in-out infinite;
+    }
+    #insights-status-dot.error {
+      background: var(--red);
+    }
+    #insights-last-updated {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink4);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
     /* ── BOTTOM ROW ── */
     .bottom-grid {
       display: grid;
@@ -1356,9 +1388,9 @@
 
             <!-- Specs Section -->
             <div class="tech-dossier-specs">
-              <div>LATENCY 1MS</div>
-              <div>Peak RAM Usage 1.4K</div>
-              <div>Flash Usage 14.6K</div>
+              <div>LATENCY - 1MS</div>
+              <div>Peak RAM Usage - 1.4K</div>
+              <div>Flash Usage - 14.6K</div>
             </div>
           </div>
 
@@ -1438,23 +1470,26 @@
             </div>
           </div>
           <!-- AI Insights -->
-          <div class="panel grid-insights" style="border-color:rgba(37,99,235,.2);">
+          <div class="panel grid-insights" style="border-color:rgba(37,99,235,.2);" id="insights-panel">
             <div class="panel-head">
               <span class="panel-title">AI Insights</span>
-              <span class="panel-tag">Every 5 min</span>
+              <span class="panel-tag" style="display:flex;align-items:center;gap:4px;">
+                <span id="insights-status-dot" class="loading"></span>
+                <span id="insights-last-updated">Initialising…</span>
+              </span>
             </div>
-            <div class="panel-body" style="padding-top:10px;padding-bottom:10px;">
+            <div class="panel-body" style="padding-top:10px;padding-bottom:10px;" id="insights-body">
               <div class="insight">
                 <div class="insight-tag">Right now</div>
-                <div class="insight-text" id="ins-1">Engaged and handling load well — optimal zone.</div>
+                <div class="insight-text" id="ins-1">Your cognitive load is being monitored in real time.</div>
               </div>
               <div class="insight">
                 <div class="insight-tag">Suggestion</div>
-                <div class="insight-text" id="ins-2">This is ideal for problem-solving. Keep going.</div>
+                <div class="insight-text" id="ins-2">Stay hydrated and take short breaks every 20-25 minutes.</div>
               </div>
               <div class="insight">
                 <div class="insight-tag">Trend</div>
-                <div class="insight-text" id="ins-3">Consistent focused state — timer at standard 25 min.</div>
+                <div class="insight-text" id="ins-3">If load climbs above 70, consider switching to lighter review material.</div>
               </div>
               <div class="insight">
                 <div class="insight-tag" style="color: var(--amber);">TRIBE v2 Alert</div>
@@ -1463,6 +1498,7 @@
               </div>
             </div>
           </div>
+
 
         <!-- Dashboard Banner -->
         <div class="dashboard-banner">
@@ -1620,7 +1656,11 @@
     }, 1000)
 
     // ── AREA CHART (monochrome Cobalt) ──
-    const cliHistory = Array(90).fill(0);
+    const cliHistory  = Array(90).fill(0);
+    const gsrHistory  = [];   // rolling 300-point GSR deviation history (for Gemini)
+    const rmssdHistory = [];  // rolling 300-point HRV/RMSSD history (for Gemini)
+    let sessionSeconds = 0;   // elapsed session time in seconds (for Gemini context)
+    setInterval(() => { sessionSeconds++; }, 1000);
     const cliChart = window.initLoadChart ? window.initLoadChart() : null;
 
     // ── POMODORO ──
@@ -1648,6 +1688,9 @@
     }).catch(err => console.error(err))
 
     // ── INSIGHTS ──
+    // aiInsightsActive: once Gemini delivers real data, local fallback is suppressed
+    let aiInsightsActive = false;
+
     const INSIGHTS = {
       calm: ['Stress markers below baseline — this is a strong focus window.', 'HRV is high — your body is handling load with ease.', 'Load stable and low. Building productive momentum.'],
       focused: ['Engaged, sustainable state. All signals indicate active but comfortable load.', 'Ideal for problem-solving. Skin response moderate, HRV holding.', 'Consistent focused state — timer at standard 25 min.'],
@@ -1661,6 +1704,8 @@
       overloaded: '⚠ Overload detected — break triggered.'
     }
     function setInsights(s) {
+      // Don't overwrite Gemini-generated content once AI has activated
+      if (aiInsightsActive) return;
       const pool = INSIGHTS[s] || INSIGHTS.focused
         ;[1, 2, 3].forEach((n, i) => { const e = document.getElementById('ins-' + n); if (e) e.textContent = pool[i] })
 
@@ -1715,6 +1760,11 @@
 
       // Chart
       cliHistory.push(Math.round(d.cli)); cliHistory.shift()
+      // Rolling sensor history for Gemini insights (capped at 300 = 5 min @ 1Hz)
+      gsrHistory.push(parseFloat(d.gsrDev) || 0);
+      if (gsrHistory.length > 300) gsrHistory.shift();
+      rmssdHistory.push(parseFloat(d.hrv) || 0);
+      if (rmssdHistory.length > 300) rmssdHistory.shift();
       if (cliChart) {
         cliChart.data.datasets[0].data = [...cliHistory]
         cliChart.data.datasets[0].borderColor = col
@@ -1835,32 +1885,99 @@
       }
     })
 
-    // ── AI INSIGHTS (every 5 minutes) ──────────────────────────────────────────
-    setInterval(async () => {
-      try {
-        const sessionData = {
-          cli_history: cliHistory.slice(-300),
-          gsr_history: [],
-          rmssd_history: [],
-          cds_scores: TRIBE.get(),
-          current_state: ST.get().state,
-          blink_rate: ST.get().blink
-        };
-        const resp = await fetch(`${SERVER_URL}/insights`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(sessionData)
-        });
-        const data = await resp.json();
-        if (data.insights?.length >= 3) {
-          document.getElementById('ins-1').textContent = data.insights[0];
-          document.getElementById('ins-2').textContent = data.insights[1];
-          document.getElementById('ins-3').textContent = data.insights[2];
-        }
-      } catch (e) {
-        console.log('Insights API unavailable, using fallback');
+    // ── AI INSIGHTS — Gemini-powered, every 5 minutes ────────────────────────────
+    //   • Calls immediately on load (not after waiting 5 min)
+    //   • Sends real gsrHistory, rmssdHistory, TRIBE scores, session time
+    //   • Handles all 4 insight slots: ins-1, ins-2, ins-3, ins-tribe
+    //   • Shows loading pulse + last-updated timestamp
+    //   • Falls back gracefully if server is unavailable
+    // ─────────────────────────────────────────────────────────────────────────────
+    let insightsFetchInProgress = false;
+
+    function setInsightsStatus(state, text) {
+      const dot = document.getElementById('insights-status-dot');
+      const lbl = document.getElementById('insights-last-updated');
+      if (dot) {
+        dot.className = state === 'loading' ? 'loading' : state === 'error' ? 'error' : '';
       }
-    }, 300000); // every 5 minutes
+      if (lbl) lbl.textContent = text;
+    }
+
+    async function fetchInsights() {
+      if (insightsFetchInProgress) return; // debounce concurrent calls
+      insightsFetchInProgress = true;
+
+      const panel = document.getElementById('insights-body');
+      if (panel) panel.classList.add('insights-loading');
+      setInsightsStatus('loading', 'Updating…');
+
+      try {
+        const tribeScores = TRIBE.get();
+        const tribeRegion = TRIBE.getDominantRegion();
+
+        const sessionData = {
+          cli_history:           cliHistory.slice(-300),
+          gsr_history:           gsrHistory.slice(-300),
+          rmssd_history:         rmssdHistory.slice(-300),
+          cds_scores:            tribeScores,
+          current_state:         ST.get().state,
+          blink_rate:            ST.get().blink,
+          session_seconds:       sessionSeconds,
+          dominant_region:       tribeRegion?.label     || null,
+          routing_recommendation: tribeRegion?.recommendation || null
+        };
+
+        const resp = await fetch(`${SERVER_URL}/insights`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(sessionData),
+          signal:  AbortSignal.timeout(15000)   // 15s hard timeout
+        });
+
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+        const data = await resp.json();
+        const ins  = data.insights;
+
+        if (Array.isArray(ins) && ins.length >= 3) {
+          // Update all four slots
+          ['ins-1','ins-2','ins-3'].forEach((id, i) => {
+            const el = document.getElementById(id);
+            if (el && ins[i]) el.textContent = ins[i];
+          });
+          const tribeEl = document.getElementById('ins-tribe');
+          if (tribeEl && ins[3]) tribeEl.textContent = ins[3];
+
+          // Mark AI as active — prevents setInsights() from overwriting on state change
+          aiInsightsActive = true;
+
+          const provider = data.ai_provider === 'google_gemini_2.0_flash'
+            ? 'Gemini · ' : 'AI · ';
+          const now = new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+          setInsightsStatus('ok', provider + now);
+          console.log(`[Insights] Updated via ${data.ai_provider} at ${now}`);
+        } else {
+          throw new Error('Unexpected response shape');
+        }
+
+      } catch (err) {
+        console.log('[Insights] API unavailable, using local fallback:', err.message);
+        // Use local fallbacks — don't leave panel empty
+        if (!aiInsightsActive) setInsights(ST.get().state);
+        setInsightsStatus('error', 'Retry in 5 min');
+      } finally {
+        insightsFetchInProgress = false;
+        const panel = document.getElementById('insights-body');
+        if (panel) panel.classList.remove('insights-loading');
+      }
+    }
+
+    // ── Fire immediately (don't make user wait 5 minutes) ─────────────────────
+    // Small delay so cliHistory/gsrHistory can populate with a few real ticks first
+    setTimeout(fetchInsights, 4000);
+
+    // ── Then repeat every 5 minutes ───────────────────────────────────────────
+    setInterval(fetchInsights, 300000);
 
     // ── Start BlinkDetector + trigger calibration with session ─────────────────
     document.addEventListener('DOMContentLoaded', () => {

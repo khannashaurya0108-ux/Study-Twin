@@ -355,11 +355,13 @@ app.get('/analyze/status/:uid', async (req, res) => {
 
 // POST /insights
 // Uses Google Gemini 2.0 Flash (FREE — aistudio.google.com)
+// Returns 4 insights: right_now, suggestion, trend, tribe_alert
 app.post('/insights', async (req, res) => {
   const FALLBACK_INSIGHTS = [
     'Your cognitive load is being monitored in real time.',
     'Stay hydrated and take short breaks every 20-25 minutes.',
-    'If load climbs above 70, consider switching to lighter review material.'
+    'If load climbs above 70, consider switching to lighter review material.',
+    'All brain circuits operating within normal parameters for this material.'
   ];
 
   try {
@@ -369,54 +371,125 @@ app.post('/insights', async (req, res) => {
       rmssd_history = [],
       cds_scores = {},
       current_state = 'focused',
-      blink_rate = 13
+      blink_rate = 13,
+      session_seconds = 0,
+      dominant_region = null,
+      routing_recommendation = null
     } = req.body;
 
+    // ── Compute statistics ──────────────────────────────────────────────────
     const avgCLI = cli_history.length
-      ? (cli_history.reduce((a, b) => a + b, 0) / cli_history.length).toFixed(1) : 50;
+      ? (cli_history.reduce((a, b) => a + b, 0) / cli_history.length).toFixed(1)
+      : 50;
     const recentCLI = cli_history.length >= 10
-      ? (cli_history.slice(-10).reduce((a, b) => a + b, 0) / 10).toFixed(1) : avgCLI;
+      ? (cli_history.slice(-10).reduce((a, b) => a + b, 0) / 10).toFixed(1)
+      : avgCLI;
     const trend = parseFloat(recentCLI) > parseFloat(avgCLI) + 5 ? 'rising'
-      : parseFloat(recentCLI) < parseFloat(avgCLI) - 5 ? 'falling' : 'stable';
+      : parseFloat(recentCLI) < parseFloat(avgCLI) - 5 ? 'falling'
+      : 'stable';
 
-    const lastHRV = rmssd_history.length ? rmssd_history[rmssd_history.length - 1] : null;
-    const lastGSR = gsr_history.length ? gsr_history[gsr_history.length - 1] : null;
+    // Peak CLI in the window
+    const peakCLI = cli_history.length ? Math.max(...cli_history) : 50;
 
-    const prompt = `You analyze biosignal data from a student using a cognitive load wearable.
+    // HRV and GSR latest values
+    const avgHRV = rmssd_history.length
+      ? (rmssd_history.slice(-10).reduce((a, b) => a + b, 0) / Math.min(rmssd_history.length, 10)).toFixed(1)
+      : null;
+    const avgGSR = gsr_history.length
+      ? (gsr_history.slice(-10).reduce((a, b) => a + b, 0) / Math.min(gsr_history.length, 10)).toFixed(1)
+      : null;
 
-STATE: ${current_state}
-CLI average (5 min): ${avgCLI}/100
-CLI trend: ${trend}
-Recent CLI: ${recentCLI}/100
-HRV RMSSD: ${lastHRV ? lastHRV.toFixed(1) + 'ms' : 'N/A'}
-GSR deviation: ${lastGSR ? lastGSR.toFixed(1) + '%' : 'N/A'} above baseline
-Blink rate: ${blink_rate}/min
-Brain circuits: Executive ${cds_scores.cds_executive || 60}%, Language ${cds_scores.cds_language || 50}%, Visual ${cds_scores.cds_visual || 35}%
+    const sessionMin = Math.round(session_seconds / 60);
 
-Give EXACTLY 3 plain-English observations (no medical jargon). Each 1-2 sentences, actionable, specific to these numbers.
-OUTPUT FORMAT: JSON array of exactly 3 strings only. No extra text, no markdown, just the raw JSON array.`;
+    // ── Determine dominant circuit with recommendation ──────────────────────
+    const exec = cds_scores.cds_executive || 60;
+    const lang = cds_scores.cds_language  || 50;
+    const vis  = cds_scores.cds_visual    || 35;
 
+    const circuitMap = { Executive: exec, Language: lang, Visual: vis };
+    const topCircuit = dominant_region
+      || Object.entries(circuitMap).sort(([,a],[,b]) => b - a)[0][0];
+
+    const tribeRecs = {
+      Executive: 'Switch to visual content — diagrams or summary videos to rest the prefrontal cortex.',
+      Language:  'Switch to numerical content — equations or graphs. Reduce dense reading.',
+      Visual:    'Switch to audio or text-light reading. Reduce diagram and animation-heavy material.'
+    };
+    const tribeRec = routing_recommendation || tribeRecs[topCircuit] || tribeRecs.Executive;
+
+    // ── Build Gemini prompt ─────────────────────────────────────────────────
+    const prompt = `You analyze biosignal data from a student using a wearable cognitive load monitor (StudyTwin).
+
+CURRENT DATA:
+- State: ${current_state.toUpperCase()} | CLI: ${avgCLI}/100 (peak ${peakCLI}, trend: ${trend})
+- Recent CLI (last 10 readings): ${recentCLI}/100
+- HRV RMSSD: ${avgHRV ? avgHRV + 'ms' : 'N/A'} | GSR deviation: ${avgGSR ? avgGSR + '%' : 'N/A'} above baseline
+- Blink rate: ${blink_rate}/min (normal range: 10-20/min; below 10 signals fatigue)
+- Session time: ${sessionMin} min elapsed
+- Brain circuits (TRIBE v2): Executive ${exec}%, Language ${lang}%, Visual ${vis}%
+- Dominant circuit under demand: ${topCircuit}
+
+Generate EXACTLY 4 plain-English observations. No medical jargon. Each 1-2 sentences.
+Observation 0 (RIGHT NOW): What is the student experiencing cognitively right this moment? Be specific to the numbers.
+Observation 1 (SUGGESTION): One concrete, immediately actionable thing they should do (e.g. "take a 2-min walk", "drink water", "try a practice problem"). Make it specific.
+Observation 2 (TREND): What pattern do the last 5 minutes show? Is load accelerating, holding, or recovering?
+Observation 3 (TRIBE ALERT): Which brain circuit is under load right now and what specific rest activity will restore it? Reference the dominant circuit (${topCircuit}).
+
+CRITICAL OUTPUT FORMAT: JSON array of exactly 4 strings ONLY. No markdown, no preamble, no explanation. Just: ["str1","str2","str3","str4"]`;
+
+    console.log(`[Insights] Calling Gemini for UID state=${current_state} CLI=${avgCLI} trend=${trend}`);
     const rawText = await callGeminiInsights(prompt);
 
+    // ── Parse Gemini response ──────────────────────────────────────────────
     let insights = null;
     if (rawText) {
       try {
+        // Try to find JSON array in response (handles markdown wrapping)
         const match = rawText.match(/\[[\s\S]*?\]/);
-        insights = match ? JSON.parse(match[0]) : null;
+        if (match) {
+          insights = JSON.parse(match[0]);
+        }
       } catch (e) {
-        console.warn('Gemini JSON parse issue, using computed fallback');
+        console.warn('[Insights] Gemini JSON parse failed, building computed fallback');
       }
     }
 
-    if (!Array.isArray(insights) || insights.length < 3) {
+    // ── Computed fallback (always meaningful, uses real data) ───────────────
+    if (!Array.isArray(insights) || insights.length < 4) {
+      const stateMessages = {
+        calm:       'Load is below baseline — you are relaxed and absorbing information well.',
+        focused:    `Cognitive load at ${avgCLI}/100 — you are in the optimal engagement zone.`,
+        elevated:   `Load rising to ${avgCLI}/100 — skin conductance and HRV indicate early stress.`,
+        overloaded: `Load at ${avgCLI}/100 — cognitive overload detected, continuing reduces retention.`
+      };
+      const suggestions = {
+        calm:       'This is a great window for tackling harder problems — push into the difficult material now.',
+        focused:    'Maintain your current pace. A sip of water and a quick stretch in the next few minutes will sustain this.',
+        elevated:   'Take a 2-minute breathing pause: 4 counts in, 6 counts out. Do not skip this.',
+        overloaded: 'Stop now and step away from the screen for at least 5 minutes. Your working memory is saturated.'
+      };
+      const trendMsg = trend === 'rising'
+        ? `Load has climbed ${(parseFloat(recentCLI) - parseFloat(avgCLI)).toFixed(1)} points in the last 2 minutes — address this before it peaks.`
+        : trend === 'falling'
+        ? 'Load is recovering — the adaptation is working. Hold this easier pace for another 2 minutes.'
+        : `Load has been stable at ${avgCLI}/100 for 5 minutes — a consistent and sustainable session.`;
+
       insights = [
-        `Cognitive load at ${avgCLI}/100 and ${trend} — currently in ${current_state} state.`,
-        'Monitor HRV and skin response for further load signals.',
-        'Continue current study pace and watch for rising CLI trend.'
+        stateMessages[current_state] || stateMessages.focused,
+        suggestions[current_state]   || suggestions.focused,
+        trendMsg,
+        (current_state === 'elevated' || current_state === 'overloaded')
+          ? `${topCircuit} circuit is under high demand. ${tribeRec}`
+          : `All brain circuits operating within normal parameters. ${topCircuit} circuit is the most active at ${circuitMap[topCircuit]}%.`
       ];
     }
 
-    res.json({ insights, ai_provider: 'google_gemini_2.0_flash' });
+    // Ensure exactly 4 entries
+    while (insights.length < 4) insights.push(FALLBACK_INSIGHTS[insights.length]);
+    insights = insights.slice(0, 4).map(s => String(s).trim());
+
+    console.log(`[Insights] Response: ${insights.map(s => s.substring(0,40)).join(' | ')}`);
+    res.json({ insights, ai_provider: rawText ? 'google_gemini_2.0_flash' : 'computed_fallback' });
 
   } catch (err) {
     console.error('POST /insights error:', err.message);
