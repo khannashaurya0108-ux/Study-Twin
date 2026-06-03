@@ -1850,6 +1850,39 @@
       set('t-vis', 'Visual ' + data.visual)
       set('t-rec', 'Recommended session: ' + data.recommended_duration + ' min')
 
+      // ── Wire Brain Demand card to real TRIBE scores ──────────────────────────
+      // Runs every time Firebase pushes new metadata (after PDF upload)
+      const execVal = data.executive || data.cds_executive || 0;
+      const langVal = data.language  || data.cds_language  || 0;
+      const visVal  = data.visual    || data.cds_visual     || 0;
+
+      if (execVal > 0 || langVal > 0 || visVal > 0) {
+        // Update bars
+        const execBar = document.getElementById('bd-exec-bar');
+        const langBar = document.getElementById('bd-lang-bar');
+        const visBar  = document.getElementById('bd-vis-bar');
+        if (execBar) execBar.style.width = execVal + '%';
+        if (langBar) langBar.style.width = langVal + '%';
+        if (visBar)  visBar.style.width  = visVal  + '%';
+
+        // Update numeric labels
+        const execValEl = document.getElementById('bd-exec-val');
+        const langValEl = document.getElementById('bd-lang-val');
+        const visValEl  = document.getElementById('bd-vis-val');
+        if (execValEl) execValEl.textContent = execVal;
+        if (langValEl) langValEl.textContent = langVal;
+        if (visValEl)  visValEl.textContent  = visVal;
+
+        // Update context bar pills (tribe bar at top)
+        const tribeExecPill = document.getElementById('tribe-exec-grid');
+        const tribeLangPill = document.getElementById('tribe-lang-grid');
+        const tribeVisPill  = document.getElementById('tribe-vis-grid');
+        if (tribeExecPill) tribeExecPill.textContent = execVal;
+        if (tribeLangPill) tribeLangPill.textContent = langVal;
+        if (tribeVisPill)  tribeVisPill.textContent  = visVal;
+      }
+      // ── End Brain Demand wiring ───────────────────────────────────────────────
+
       // ── Wire TRIBE mode badge ───────────────────────────────────────────────────
       const modeEl = document.getElementById('tribe-mode-badge')
       if (modeEl) {
