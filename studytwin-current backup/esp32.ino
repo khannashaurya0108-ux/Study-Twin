@@ -26,6 +26,7 @@
 //    These are TWO DIFFERENT things. OLED labels them separately.
 // ============================================================
 
+#include <StudyTwin_inferencing.h>
 #include <WiFi.h>
 #include <WebServer.h>
 #include <SPIFFS.h>
@@ -105,6 +106,23 @@ unsigned long lastValidMs = 0;
 unsigned long lastSecMs     = 0;
 unsigned long lastHistMs    = 0;
 #define HISTORY_INTERVAL_MS  5000
+
+// ── PHASE 4: TinyML ADDITIONS ────────────────────────────────────────
+// Circular buffer: stores the last 30 seconds of sensor readings (1 Hz)
+#define EI_WINDOW_SIZE   30     // 30 samples = 30 seconds at 1 Hz
+#define EI_N_CHANNELS     2     // gsr_z  +  hr_bpm
+
+float ei_gsr_buf[EI_WINDOW_SIZE];   // GSR z-score history
+float ei_hr_buf[EI_WINDOW_SIZE];    // Heart rate BPM history
+int   ei_buf_idx      = 0;          // Current write position
+bool  ei_buf_full     = false;      // True after 30 seconds
+
+// Interleaved feature array: [gsr[0], hr[0], gsr[1], hr[1], ...]
+float ei_feature_buf[EI_WINDOW_SIZE * EI_N_CHANNELS];
+
+// Model version flag (written to Firebase to confirm TinyML is active)
+const String MODEL_VERSION = "tinyml_v1";
+// ─────────────────────────────────────────────────────────────────────
 
 // ============================================================
 //  CONFIG PORTAL HTML
@@ -438,6 +456,8 @@ void fbWriteLive(int gsrRaw, float gsrZ, float rmssd,
   json.set("hr_bpm",       hrBpm);
   json.set("battery",      3800);   // static for Phase 2 (no voltage divider yet)
   json.set("sensor_valid", valid);
+  json.set("model_version", MODEL_VERSION);
+  json.set("ei_buf_pct",   (int)(ei_buf_full ? 100 : (ei_buf_idx * 100 / EI_WINDOW_SIZE)));
 
   if (Firebase.setJSON(fbdo, path.c_str(), json)) {
     Serial.println("[FB] live/current OK");
@@ -492,6 +512,80 @@ void fbReadBlinkRate() {
     Serial.println("[FB] blink_rate not yet in Firebase (browser not started?)");
   }
 }
+
+// ── PHASE 4: EI Signal Callback (required by Edge Impulse SDK) ───────
+// Edge Impulse calls this function during inference to read feature data.
+// It copies a slice of ei_feature_buf into the output buffer.
+int ei_get_signal_data(size_t offset, size_t length, float *out_ptr) {
+    for (size_t i = 0; i < length; i++) {
+        out_ptr[i] = ei_feature_buf[offset + i];
+    }
+    return EIDSP_OK;
+}
+// ─────────────────────────────────────────────────────────────────────
+
+// ── PHASE 4: Prepare EI feature array from circular buffers ──────────
+// Rearranges the circular buffer into the interleaved format
+// that Edge Impulse expects: [gsr[t=0], hr[t=0], gsr[t=1], hr[t=1], ...]
+void ei_prepare_features() {
+    for (int i = 0; i < EI_WINDOW_SIZE; i++) {
+        // If buffer is not full yet, pad early positions with current value
+        int buf_pos;
+        if (!ei_buf_full) {
+            buf_pos = (i < ei_buf_idx) ? i : 0;
+        } else {
+            // Circular: oldest data first
+            buf_pos = (ei_buf_idx + i) % EI_WINDOW_SIZE;
+        }
+        ei_feature_buf[i * EI_N_CHANNELS + 0] = ei_gsr_buf[buf_pos];
+        ei_feature_buf[i * EI_N_CHANNELS + 1] = ei_hr_buf[buf_pos];
+    }
+}
+
+// ── PHASE 4: Run TinyML inference and return state string ─────────────
+// Returns: "calm", "focused", "elevated", or "overloaded"
+String ei_run_inference() {
+    // Not enough data yet — return safe default
+    if (!ei_buf_full && ei_buf_idx < 5) {
+        return "focused";
+    }
+
+    // Flatten circular buffer into interleaved feature array
+    ei_prepare_features();
+
+    // Set up Edge Impulse signal structure
+    signal_t ei_signal;
+    ei_signal.total_length = EI_WINDOW_SIZE * EI_N_CHANNELS;
+    ei_signal.get_data     = &ei_get_signal_data;
+
+    // Run the 1D-CNN classifier
+    ei_impulse_result_t result = { 0 };
+    EI_IMPULSE_ERROR err = run_classifier(&ei_signal, &result, false);
+
+    if (err != EI_IMPULSE_OK) {
+        Serial.printf("[TinyML] ERROR %d — using fallback rule-based\n", err);
+        return "focused";   // safe fallback
+    }
+
+    // Find highest-confidence prediction
+    int   best_class = 0;
+    float best_score = 0.0f;
+    for (int i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++) {
+        if (result.classification[i].value > best_score) {
+            best_score = result.classification[i].value;
+            best_class = i;
+        }
+    }
+
+    // Print all class scores to Serial (for debugging)
+    Serial.printf("[TinyML] %s (%.0f%%) | latency: %d ms\n",
+        result.classification[best_class].label,
+        best_score * 100.0f,
+        result.timing.classification);
+
+    return String(result.classification[best_class].label);
+}
+// ─────────────────────────────────────────────────────────────────────
 
 // ============================================================
 //  SETUP
@@ -582,6 +676,16 @@ void setup() {
   lastHistMs = millis();
   lastBlinkReadMs = 0;
 
+  // ── PHASE 4: Print TinyML model info on boot ──────────────────
+  delay(100);
+  Serial.println("[TinyML] 1D-CNN model loaded:");
+  Serial.printf("         Labels: %d | Input samples: %d | Channels: %d\n",
+      EI_CLASSIFIER_LABEL_COUNT,
+      EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE / EI_N_CHANNELS,
+      EI_N_CHANNELS);
+  Serial.println("[TinyML] Filling 30-second data window before first inference...");
+  // ─────────────────────────────────────────────────────────────
+
   Serial.println("[BOOT] Complete. Streaming...");
 }
 
@@ -642,6 +746,17 @@ void loop() {
   Serial.printf("[HRV] rmssd=%.1f  hr=%.0f  hrv_score=%.1f\n",
                 rmssd_val, hr_bpm, hrv_score);
 
+  // ── PHASE 4: Push new sensor readings into circular buffer ────
+  // Use hr_bpm from peak detection if available; else approximate from hrv_score
+  float current_hr_bpm = (hr_bpm > 0) ? hr_bpm : (60.0f + (100.0f - hrv_score) * 0.31f);
+
+  // Store in circular buffer
+  ei_gsr_buf[ei_buf_idx] = gsr_z;
+  ei_hr_buf[ei_buf_idx]  = current_hr_bpm;
+  ei_buf_idx = (ei_buf_idx + 1) % EI_WINDOW_SIZE;
+  if (ei_buf_idx == 0) ei_buf_full = true;
+  // ─────────────────────────────────────────────────────────────
+
   // 3. CLI fusion (only update when sensor is valid)
   //    blink_rate_web = from browser MediaPipe (15% weight)
   //    If browser not started yet, use 50 as neutral blink score
@@ -655,24 +770,40 @@ void loop() {
     float raw_cli  = (gsr_score * 0.50f) + (hrv_score * 0.35f) + (blinkScore * 0.15f);
     cli_smoothed   = cli_smoothed * (1.0f - EMA_ALPHA) + raw_cli * EMA_ALPHA;
   }
-  const char* state = cliState(cli_smoothed);
+  // ── PHASE 4: TinyML State Classification ─────────────────────
+  String state;
+
+  if (ei_buf_full || ei_buf_idx >= 5) {
+      // Use the trained 1D-CNN neural network
+      state = ei_run_inference();
+  } else {
+      // Buffer not full yet — use rule-based fallback while warming up
+      if      (cli_smoothed < 26.0f) state = "calm";
+      else if (cli_smoothed < 56.0f) state = "focused";
+      else if (cli_smoothed < 78.0f) state = "elevated";
+      else                           state = "overloaded";
+
+      Serial.printf("[TinyML] Warming up: %d/30 seconds filled\n", ei_buf_idx);
+  }
+  // ─────────────────────────────────────────────────────────────
+
   Serial.printf("[CLI] %.1f  state=%s  valid=%s\n",
-                cli_smoothed, state, sensor_valid ? "YES" : "NO");
+                cli_smoothed, state.c_str(), sensor_valid ? "YES" : "NO");
 
   // 4. Update OLED
-  updateOLED((int)cli_smoothed, state,
+  updateOLED((int)cli_smoothed, state.c_str(),
              (int)hr_bpm, gsrDevPct,
              blink_rate_web, sensor_valid);
 
   // 5. Firebase: overwrite live/current every 1s
   fbWriteLive(gsrRaw, gsr_z, rmssd_val,
-              (int)cli_smoothed, state,
+              (int)cli_smoothed, state.c_str(),
               (int)hr_bpm, sensor_valid);
 
   // 6. Firebase: push history every 5s (only when sensor valid)
   if (sensor_valid && (now - lastHistMs >= HISTORY_INTERVAL_MS)) {
     lastHistMs = now;
-    fbWriteHistory((int)cli_smoothed, state, (int)hr_bpm, rmssd_val);
+    fbWriteHistory((int)cli_smoothed, state.c_str(), (int)hr_bpm, rmssd_val);
   }
 
   // 7. Firebase: read blink_rate from browser every 15s
