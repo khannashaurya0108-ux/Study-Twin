@@ -367,6 +367,218 @@
         justify-content: center;
       }
     }
+
+/* ── HEATMAP SECTION ──────────────────────────────────────────────────── */
+#heatmap-section {
+  background: var(--ink);                      /* same dark as upload card */
+  padding: 64px 28px 72px;
+}
+
+.heatmap-inner {
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+/* Header */
+.heatmap-hdr {
+  margin-bottom: 40px;
+}
+.heatmap-hdr h2 {
+  font-family: var(--ff-serif);
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 800;
+  color: #ffffff;
+  margin: 10px 0 8px;
+  letter-spacing: -0.5px;
+}
+.heatmap-hdr p {
+  font-size: 15px;
+  color: rgba(255,255,255,0.45);
+  max-width: 480px;
+}
+
+/* Body: canvas + sidebar */
+.heatmap-body {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .heatmap-body {
+    grid-template-columns: 1fr;
+  }
+  .heatmap-canvas-wrap {
+    height: 340px !important;
+  }
+}
+
+/* Canvas container */
+.heatmap-canvas-wrap {
+  position: relative;
+  height: 480px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, rgba(37,99,235,0.07) 0%, rgba(0,0,0,0) 70%);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+#brain-heatmap-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Floating region labels on canvas */
+.hm-canvas-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 100px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.10);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.hm-canvas-label-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+/* Anatomical approximate positions when brain faces camera */
+.hm-label-exec { top: 14%; left: 50%; transform: translateX(-50%); }
+.hm-label-lang { top: 42%; left:  7%; }
+.hm-label-vis  { bottom: 16%; left: 50%; transform: translateX(-50%); }
+
+/* ── SIDEBAR ──────────────────────────────────────────────────────────── */
+.heatmap-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Individual metric card */
+.hm-metric {
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.hm-metric:last-of-type { border-bottom: none; }
+
+.hm-metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.hm-metric-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* SVG ring */
+.hm-ring-svg {
+  transform: rotate(-90deg);
+  flex-shrink: 0;
+}
+.hm-ring-bg  { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 5; }
+.hm-ring-arc {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 226;
+  stroke-dashoffset: 226;
+  transition: stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1);
+}
+
+.hm-metric-label {
+  display: flex;
+  flex-direction: column;
+}
+.hm-metric-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+.hm-metric-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.38);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+/* Large score number */
+.hm-score-num {
+  font-family: var(--ff-mono, 'Courier New', monospace);
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  min-width: 52px;
+  text-align: right;
+  transition: color 0.6s;
+}
+
+/* Progress bar */
+.hm-bar-track {
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.hm-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  width: 0%;
+  transition: width 1.4s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Data badge */
+.hm-data-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  transition: all 0.5s;
+}
+.hm-data-badge.hm-badge-live {
+  background: rgba(74,222,128,0.06);
+  border-color: rgba(74,222,128,0.25);
+  color: rgba(74,222,128,0.85);
+}
+.hm-badge-dot-el {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  animation: hmPulse 2s infinite;
+}
+.hm-badge-label { font-weight: 600; }
+.hm-badge-mode  { margin-left: auto; font-size: 10px; opacity: 0.6; }
+
+@keyframes hmPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
   </style>
 </head>
 
@@ -409,11 +621,115 @@
       </div>
     </section>
 
-    <!-- BRAIN HEATMAP PLACEHOLDER -->
-    <section style="max-width: 1300px; margin: 0 auto 80px; padding: 0 28px;">
-      <div class="brain-heatmap-placeholder">
-        [ 3D Brain Heatmap Visualisation (Coming Soon) ]
-      </div>
+    <!-- BRAIN HEATMAP VISUALIZATION — Real CDS scores from Firebase via TRIBE -->
+    <section id="heatmap-section">
+      <div class="heatmap-inner">
+
+        <!-- Header -->
+        <div class="heatmap-hdr">
+          <div class="eyebrow amber">Cortical Demand Heatmap</div>
+          <h2>Live Neural Field Visualisation</h2>
+          <p>Three.js particle field driven by real TRIBE v2 CDS scores from Firebase. Each region glows proportional to its computed demand.</p>
+        </div>
+
+        <!-- Body -->
+        <div class="heatmap-body">
+
+          <!-- ── LEFT: Three.js Canvas ── -->
+          <div class="heatmap-canvas-wrap">
+            <canvas id="brain-heatmap-canvas"></canvas>
+
+            <!-- Floating region labels (approximate anatomical positions) -->
+            <div class="hm-canvas-label hm-label-exec">
+              <div class="hm-canvas-label-dot" style="background:#D97706;box-shadow:0 0 6px #D97706;"></div>
+              Executive Network
+            </div>
+            <div class="hm-canvas-label hm-label-lang">
+              <div class="hm-canvas-label-dot" style="background:#2563EB;box-shadow:0 0 6px #2563EB;"></div>
+              Language Network
+            </div>
+            <div class="hm-canvas-label hm-label-vis">
+              <div class="hm-canvas-label-dot" style="background:#059669;box-shadow:0 0 6px #059669;"></div>
+              Visual Network
+            </div>
+          </div>
+
+          <!-- ── RIGHT: Metrics Sidebar ── -->
+          <div class="heatmap-sidebar">
+
+            <!-- Executive -->
+            <div class="hm-metric">
+              <div class="hm-metric-top">
+                <div class="hm-metric-left">
+                  <svg class="hm-ring-svg" width="48" height="48" viewBox="0 0 48 48">
+                    <circle class="hm-ring-bg"  cx="24" cy="24" r="18"/>
+                    <circle class="hm-ring-arc" cx="24" cy="24" r="18"
+                            id="hm-ring-executive" style="stroke:#D97706;"/>
+                  </svg>
+                  <div class="hm-metric-label">
+                    <div class="hm-metric-name">Executive</div>
+                    <div class="hm-metric-sub">Frontal · Anterior Cingulate</div>
+                  </div>
+                </div>
+                <div class="hm-score-num" id="hm-score-executive" style="color:#D97706;">0</div>
+              </div>
+              <div class="hm-bar-track">
+                <div class="hm-bar-fill" id="hm-bar-executive" style="background:#D97706;"></div>
+              </div>
+            </div>
+
+            <!-- Language -->
+            <div class="hm-metric">
+              <div class="hm-metric-top">
+                <div class="hm-metric-left">
+                  <svg class="hm-ring-svg" width="48" height="48" viewBox="0 0 48 48">
+                    <circle class="hm-ring-bg"  cx="24" cy="24" r="18"/>
+                    <circle class="hm-ring-arc" cx="24" cy="24" r="18"
+                            id="hm-ring-language" style="stroke:#2563EB;"/>
+                  </svg>
+                  <div class="hm-metric-label">
+                    <div class="hm-metric-name">Language</div>
+                    <div class="hm-metric-sub">Broca's · Wernicke's · Temporal</div>
+                  </div>
+                </div>
+                <div class="hm-score-num" id="hm-score-language" style="color:#2563EB;">0</div>
+              </div>
+              <div class="hm-bar-track">
+                <div class="hm-bar-fill" id="hm-bar-language" style="background:#2563EB;"></div>
+              </div>
+            </div>
+
+            <!-- Visual -->
+            <div class="hm-metric">
+              <div class="hm-metric-top">
+                <div class="hm-metric-left">
+                  <svg class="hm-ring-svg" width="48" height="48" viewBox="0 0 48 48">
+                    <circle class="hm-ring-bg"  cx="24" cy="24" r="18"/>
+                    <circle class="hm-ring-arc" cx="24" cy="24" r="18"
+                            id="hm-ring-visual" style="stroke:#059669;"/>
+                  </svg>
+                  <div class="hm-metric-label">
+                    <div class="hm-metric-name">Visual</div>
+                    <div class="hm-metric-sub">Occipital · Ventral Visual Stream</div>
+                  </div>
+                </div>
+                <div class="hm-score-num" id="hm-score-visual" style="color:#059669;">0</div>
+              </div>
+              <div class="hm-bar-track">
+                <div class="hm-bar-fill" id="hm-bar-visual" style="background:#059669;"></div>
+              </div>
+            </div>
+
+            <!-- Data freshness badge -->
+            <div class="hm-data-badge" id="hm-data-badge">
+              <div class="hm-badge-dot-el"></div>
+              <span class="hm-badge-label">Awaiting analysis…</span>
+              <span class="hm-badge-mode" id="hm-tribe-mode"></span>
+            </div>
+
+          </div><!-- /sidebar -->
+        </div><!-- /body -->
+      </div><!-- /inner -->
     </section>
 
     <!-- SECTION 2: REGION CARDS -->
@@ -977,6 +1293,8 @@
       if (_tribeUpdating) return;
       _tribeUpdating = true;
       updateUI(data);
+      const modeEl = document.getElementById('hm-tribe-mode');
+      if (modeEl && data.tribe_mode) modeEl.textContent = data.tribe_mode.toUpperCase();
       _tribeUpdating = false;
     });
 
@@ -1065,6 +1383,7 @@
       }, 800);
     });
   </script>
+  <script src="brain-heatmap.js"></script>
 
 </body>
 
