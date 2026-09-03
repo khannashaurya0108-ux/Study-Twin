@@ -1,14 +1,15 @@
 /* ══════════════════════════════════════════════════════════════
-   STUDYTWIN — Universal Authentication Module  (FIXED v2)
-   
-   WHAT IS FIXED vs the original:
-   ✅ A permanent Sign-In / Sign-Out bar is injected at the top of
-      EVERY page — you can always see your auth state and UID.
-   ✅ Your UID is shown in the bar — copy it to the ESP32 config portal.
-   ✅ Retry logic: even if nav is rendered AFTER Firebase resolves,
-      the Sign In / Sign Out button still updates correctly.
-   ✅ Firebase SDK loading is more robust — waits if SDK is already
-      being loaded by dashboard.html script tags.
+   STUDYTWIN — Universal Authentication Module  (FAB v3)
+
+   CHANGES vs FIXED v2:
+   ✅ Removed the persistent top blue auth banner — nav widgets
+      are no longer obscured on Home and Dashboard pages.
+   ✅ Replaced with a floating bottom-right dropdown FAB so users
+      can sign in / sign out without leaving the page.
+   ✅ FAB shows user initial when signed in, person icon when not.
+   ✅ Dropdown shows auth status, copyable UID, and Sign In/Out.
+   ✅ Google auth popup logic unchanged.
+   ✅ body padding-top is no longer forced.
 ══════════════════════════════════════════════════════════════ */
 
 // Pages that require the user to be logged in
@@ -25,130 +26,213 @@ var FIREBASE_CONFIG = {
   appId:             "1:345837599600:web:f2c191ab3cf7c24ca5edb5"
 };
 
-// ── Inject persistent auth bar at the very top of every page ───
-// This bar is ALWAYS visible regardless of navigation state.
-(function injectPersistentAuthBar() {
-  // Don't inject on the login page (it has its own UI)
-  // We check at DOM ready because body.dataset isn't available yet here
-  function createBar() {
-    if (document.getElementById('st-persistent-auth-bar')) return;
+// ── Inject floating bottom-right auth FAB ──────────────────────
+// A small floating button (bottom-right) with a dropdown panel
+// for sign-in / sign-out. Does NOT push body content or cover nav.
+(function injectAuthFAB() {
+  // Don't inject on the login page
+  function createFAB() {
+    if (document.getElementById('st-auth-fab')) return;
     if (document.body && document.body.dataset.page === 'login') return;
 
-    // CSS for the bar
+    // ── Styles ────────────────────────────────────────────────
     const style = document.createElement('style');
-    style.id = 'st-auth-bar-style';
+    style.id = 'st-auth-fab-style';
     style.textContent = `
-      #st-persistent-auth-bar {
+      /* ── FAB wrapper ── */
+      #st-auth-fab {
         position: fixed;
-        top: 0; left: 0; right: 0;
+        bottom: 24px;
+        right: 24px;
         z-index: 999999;
-        height: 38px;
-        background: rgba(6, 13, 31, 0.97);
-        border-bottom: 1px solid rgba(37, 99, 235, 0.3);
         display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        padding: 0 20px;
-        gap: 14px;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
         font-family: 'Inter', -apple-system, sans-serif;
-        font-size: 12px;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        font-size: 13px;
       }
-      #st-auth-bar-status {
+
+      /* ── Dropdown panel ── */
+      #st-auth-panel {
+        background: rgba(6, 13, 31, 0.97);
+        border: 1px solid rgba(37, 99, 235, 0.35);
+        border-radius: 14px;
+        padding: 16px 18px;
+        min-width: 230px;
+        display: none;
+        flex-direction: column;
+        gap: 10px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        animation: st-fab-slide-in 0.18s ease;
+      }
+      #st-auth-panel.open { display: flex; }
+
+      @keyframes st-fab-slide-in {
+        from { opacity: 0; transform: translateY(8px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0)  scale(1); }
+      }
+
+      /* Status row */
+      #st-fab-status-row {
         display: flex;
         align-items: center;
-        gap: 7px;
-        color: #94a3b8;
+        gap: 8px;
       }
-      #st-auth-bar-dot {
-        width: 7px;
-        height: 7px;
+      #st-fab-dot {
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background: #64748b;
         flex-shrink: 0;
         transition: background 0.4s;
       }
-      #st-auth-bar-label {
+      #st-fab-label {
         color: #94a3b8;
+        font-size: 13px;
+        font-weight: 500;
         transition: color 0.4s;
-        max-width: 180px;
+        max-width: 170px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      #st-auth-bar-uid {
+
+      /* UID chip */
+      #st-fab-uid {
         font-family: 'JetBrains Mono', 'Courier New', monospace;
         font-size: 10px;
         color: #3b82f6;
         background: rgba(37, 99, 235, 0.1);
         border: 1px solid rgba(37, 99, 235, 0.25);
-        border-radius: 4px;
-        padding: 2px 8px;
+        border-radius: 6px;
+        padding: 4px 10px;
         cursor: pointer;
         display: none;
         transition: background 0.2s;
+        width: fit-content;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      #st-auth-bar-uid:hover {
-        background: rgba(37, 99, 235, 0.2);
-      }
-      #st-auth-bar-uid::before { content: 'UID: '; }
-      #st-auth-bar-btn {
-        padding: 5px 14px;
-        border-radius: 6px;
-        border: 1px solid rgba(37, 99, 235, 0.4);
-        background: rgba(37, 99, 235, 0.15);
+      #st-fab-uid:hover { background: rgba(37, 99, 235, 0.2); }
+      #st-fab-uid::before { content: 'UID: '; }
+
+      /* Action button */
+      #st-fab-btn {
+        padding: 8px 0;
+        border-radius: 8px;
+        border: 1px solid rgba(37, 99, 235, 0.45);
+        background: rgba(37, 99, 235, 0.18);
         color: #93c5fd;
         font-family: inherit;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         cursor: pointer;
-        letter-spacing: 0.05em;
-        transition: all 0.2s;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
+        transition: all 0.2s;
+        width: 100%;
+        text-align: center;
       }
-      #st-auth-bar-btn:hover { background: rgba(37, 99, 235, 0.3); }
-      #st-auth-bar-btn.signout {
+      #st-fab-btn:hover { background: rgba(37, 99, 235, 0.32); }
+      #st-fab-btn.signout {
         border-color: rgba(239, 68, 68, 0.4);
-        background: rgba(239, 68, 68, 0.1);
+        background: rgba(239, 68, 68, 0.12);
         color: #fca5a5;
       }
-      #st-auth-bar-btn.signout:hover { background: rgba(239, 68, 68, 0.25); }
-      /* Push page content down so bar doesn't overlap nav */
-      body { padding-top: 38px !important; }
+      #st-fab-btn.signout:hover { background: rgba(239, 68, 68, 0.26); }
+
+      /* ── FAB trigger button ── */
+      #st-auth-fab-trigger {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 2px solid rgba(37, 99, 235, 0.5);
+        background: rgba(6, 13, 31, 0.92);
+        color: #93c5fd;
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 17px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 18px rgba(37, 99, 235, 0.25);
+        transition: all 0.2s;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        user-select: none;
+        flex-shrink: 0;
+      }
+      #st-auth-fab-trigger:hover {
+        border-color: rgba(37, 99, 235, 0.85);
+        box-shadow: 0 6px 24px rgba(37, 99, 235, 0.4);
+        transform: scale(1.07);
+      }
+      #st-auth-fab-trigger.signed-in {
+        border-color: rgba(34, 197, 94, 0.6);
+        box-shadow: 0 4px 18px rgba(34, 197, 94, 0.2);
+      }
+      #st-auth-fab-trigger.signed-in:hover {
+        box-shadow: 0 6px 24px rgba(34, 197, 94, 0.35);
+      }
+
+      /* Divider */
+      .st-fab-divider {
+        border: none;
+        border-top: 1px solid rgba(255,255,255,0.07);
+        margin: 0;
+      }
     `;
     document.head.appendChild(style);
 
-    // Build the bar HTML
-    const bar = document.createElement('div');
-    bar.id = 'st-persistent-auth-bar';
-    bar.innerHTML = `
-      <div id="st-auth-bar-status">
-        <div id="st-auth-bar-dot"></div>
-        <span id="st-auth-bar-label">Checking auth…</span>
+    // ── Build FAB HTML ────────────────────────────────────────
+    const fab = document.createElement('div');
+    fab.id = 'st-auth-fab';
+    fab.innerHTML = `
+      <div id="st-auth-panel">
+        <div id="st-fab-status-row">
+          <div id="st-fab-dot"></div>
+          <span id="st-fab-label">Checking auth…</span>
+        </div>
+        <span id="st-fab-uid" title="Click to copy UID — paste into ESP32 config portal"></span>
+        <hr class="st-fab-divider">
+        <button id="st-fab-btn" class="signin">Sign In with Google</button>
       </div>
-      <span id="st-auth-bar-uid" title="Click to copy UID — you need this for ESP32 config portal"></span>
-      <button id="st-auth-bar-btn" class="signin">Sign In</button>
+      <button id="st-auth-fab-trigger" title="Account">
+        <svg id="st-fab-icon-person" width="22" height="22" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span id="st-fab-initial" style="display:none;"></span>
+      </button>
     `;
+    document.body.appendChild(fab);
 
-    // Insert as very first element in body
-    if (document.body.firstChild) {
-      document.body.insertBefore(bar, document.body.firstChild);
-    } else {
-      document.body.appendChild(bar);
-    }
+    // ── Toggle dropdown on FAB click ──────────────────────────
+    const trigger = document.getElementById('st-auth-fab-trigger');
+    const panel   = document.getElementById('st-auth-panel');
+    trigger.addEventListener('click', function(e) {
+      e.stopPropagation();
+      panel.classList.toggle('open');
+    });
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+      if (!fab.contains(e.target)) panel.classList.remove('open');
+    });
 
-    // UID click to copy
-    document.getElementById('st-auth-bar-uid').addEventListener('click', function() {
+    // ── UID click to copy ─────────────────────────────────────
+    document.getElementById('st-fab-uid').addEventListener('click', function() {
       const uid = this.textContent.replace('UID: ', '').trim();
       if (!uid) return;
       if (navigator.clipboard) {
         navigator.clipboard.writeText(uid).then(() => {
-          const orig = this.textContent;
-          this.textContent = 'UID: ' + uid; // keep same with "Copied!" appended via title
-          this.title = '✅ Copied to clipboard! Paste this into ESP32 config portal.';
-          setTimeout(() => { this.title = 'Click to copy UID — you need this for ESP32 config portal'; }, 3000);
-          // Flash effect
+          this.title = '✅ Copied to clipboard! Paste into ESP32 config portal.';
           this.style.background = 'rgba(5, 150, 105, 0.25)';
           this.style.borderColor = 'rgba(5, 150, 105, 0.5)';
           this.style.color = '#6ee7b7';
@@ -156,52 +240,93 @@ var FIREBASE_CONFIG = {
             this.style.background = '';
             this.style.borderColor = '';
             this.style.color = '';
+            this.title = 'Click to copy UID — paste into ESP32 config portal';
           }, 2000);
         });
       }
     });
 
-    // Button click handler
-    document.getElementById('st-auth-bar-btn').addEventListener('click', function() {
+    // ── Sign In / Sign Out button ─────────────────────────────
+    document.getElementById('st-fab-btn').addEventListener('click', function() {
       if (window.AUTH && window.AUTH.isLoggedIn) {
         window.AUTH.signOut();
       } else {
-        window.location.href = 'login.html';
+        // Trigger Google sign-in popup directly from FAB
+        if (window.AUTH && typeof window.AUTH.signInWithGoogle === 'function') {
+          this.textContent = 'Opening Google…';
+          this.disabled = true;
+          window.AUTH.signInWithGoogle()
+            .catch(err => {
+              console.warn('[Auth FAB] Sign-in error:', err);
+              this.textContent = 'Sign In with Google';
+              this.disabled = false;
+            });
+        } else {
+          window.location.href = 'login.html';
+        }
       }
     });
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', createBar);
+    document.addEventListener('DOMContentLoaded', createFAB);
   } else {
-    createBar();
+    createFAB();
   }
 })();
 
-// ── Update the persistent auth bar ─────────────────────────────
+// ── Update the FAB state when auth changes ─────────────────────
 function _updatePersistentBar(isLoggedIn, user) {
-  const dot   = document.getElementById('st-auth-bar-dot');
-  const label = document.getElementById('st-auth-bar-label');
-  const uid   = document.getElementById('st-auth-bar-uid');
-  const btn   = document.getElementById('st-auth-bar-btn');
+  const dot     = document.getElementById('st-fab-dot');
+  const label   = document.getElementById('st-fab-label');
+  const uid     = document.getElementById('st-fab-uid');
+  const btn     = document.getElementById('st-fab-btn');
+  const trigger = document.getElementById('st-auth-fab-trigger');
+  const icon    = document.getElementById('st-fab-icon-person');
+  const initial = document.getElementById('st-fab-initial');
   if (!dot) return;
 
   if (isLoggedIn && user) {
-    dot.style.background = '#22c55e';
-    label.textContent    = user.displayName || user.email || 'Signed in';
-    label.style.color    = '#86efac';
-    uid.textContent      = user.uid;
-    uid.style.display    = 'block';
-    uid.title            = 'Click to copy UID — paste this into ESP32 config portal';
-    btn.textContent      = 'Sign Out';
-    btn.className        = 'signout';
+    // Status row
+    dot.style.background  = '#22c55e';
+    label.textContent     = user.displayName || user.email || 'Signed in';
+    label.style.color     = '#86efac';
+
+    // UID chip
+    uid.textContent   = user.uid;
+    uid.style.display = 'inline-block';
+
+    // Action button
+    btn.textContent = 'Sign Out';
+    btn.className   = 'signout';
+    btn.disabled    = false;
+
+    // FAB trigger — show user initial
+    const name = user.displayName || user.email || '?';
+    const char = name.charAt(0).toUpperCase();
+    if (icon)    icon.style.display    = 'none';
+    if (initial) { initial.textContent = char; initial.style.display = 'inline'; }
+    if (trigger) trigger.classList.add('signed-in');
+    if (trigger) trigger.title = 'Signed in as ' + (user.displayName || user.email);
   } else {
-    dot.style.background = '#ef4444';
-    label.textContent    = 'Not signed in';
-    label.style.color    = '#fca5a5';
-    uid.style.display    = 'none';
-    btn.textContent      = 'Sign In';
-    btn.className        = 'signin';
+    // Status row
+    dot.style.background  = '#ef4444';
+    label.textContent     = 'Not signed in';
+    label.style.color     = '#fca5a5';
+
+    // UID chip
+    uid.style.display = 'none';
+
+    // Action button
+    btn.textContent = 'Sign In with Google';
+    btn.className   = 'signin';
+    btn.disabled    = false;
+
+    // FAB trigger — show person icon
+    if (icon)    icon.style.display    = '';
+    if (initial) initial.style.display = 'none';
+    if (trigger) trigger.classList.remove('signed-in');
+    if (trigger) trigger.title = 'Sign in to your account';
   }
 }
 
@@ -256,7 +381,6 @@ window.AUTH = {
     const loadScript = (src) => new Promise((resolve) => {
       // If this exact script tag is already in the DOM, just wait for firebase obj
       if (document.querySelector(`script[src="${src}"]`)) {
-        // Script tag exists — Firebase might already be loaded
         resolve();
         return;
       }
