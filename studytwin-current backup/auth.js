@@ -13,7 +13,7 @@
 ══════════════════════════════════════════════════════════════ */
 
 // Pages that require the user to be logged in
-const PROTECTED_PAGES = ['dashboard'];
+const PROTECTED_PAGES = ['dashboard', 'index'];
 
 // ── Firebase Config ────────────────────────────────────────────
 var FIREBASE_CONFIG = {
@@ -477,14 +477,20 @@ window.AUTH = {
   },
 
   signOut() {
-    if (!window.firebase || !window.firebase.auth) return;
+    if (!window.firebase || !window.firebase.auth) {
+      window.location.href = 'login.html';
+      return;
+    }
     window.firebase.auth().signOut()
       .then(() => {
         window.CURRENT_UID     = null;
         window._sessionStartMs = null;
         window.location.href   = 'login.html';
       })
-      .catch(err => console.error('[Auth] Sign-out error:', err));
+      .catch(err => {
+        console.error('[Auth] Sign-out error:', err);
+        window.location.href = 'login.html';
+      });
   }
 };
 
