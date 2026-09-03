@@ -470,6 +470,7 @@ window.AUTH = {
       return Promise.reject(new Error('Firebase not ready. Please refresh.'));
     }
     const provider = new window.firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
     provider.addScope('profile');
     provider.addScope('email');
     return window.firebase.auth().signInWithPopup(provider);
@@ -481,7 +482,7 @@ window.AUTH = {
       .then(() => {
         window.CURRENT_UID     = null;
         window._sessionStartMs = null;
-        window.location.href   = 'index.html';
+        window.location.href   = 'login.html';
       })
       .catch(err => console.error('[Auth] Sign-out error:', err));
   }
